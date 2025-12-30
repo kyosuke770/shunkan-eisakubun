@@ -532,6 +532,15 @@ function speakEnglish(text){
 
   window.speechSynthesis.speak(uttr);
 }
+document.getElementById("ttsBtn")?.addEventListener("click", () => {
+  const idx = currentIndex();
+  if(idx === null) return;
+  const item = phrases[idx];
+  const enText = state.mode === "JP_EN" ? item.en : item.jp;
+  if(state.mode === "JP_EN"){
+    speakEnglish(enText);
+  }
+});
 // Init
 rebuildOrder();
 render();
