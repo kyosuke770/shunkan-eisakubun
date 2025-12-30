@@ -1,15 +1,19 @@
 /**
- * Shunkan EISAKUBUN
- * CSV: JP,EN,SLOTS
- * - SLOTS format: en:jp|en:jp|...
- * - Lv1: slots present -> always use first slot (fixed)
- * - Lv2: slots present -> random slot each time card appears
- * - JP/EN both can contain {x} (or not)
+ * app.js v7
+ * CSV: JP,EN,SLOTS,NOTE
+ * - SLOTS: en:jp|en:jp|...  (保険で en|en|... も受理 -> jp=en)
+ * - {x} は JP/EN 両方に入れてOK（無いなら固定文）
+ * - Lv1: slotsがあっても先頭固定
+ * - Lv2: slotsがあればランダム（カードが切り替わるたび選び直し）
+ * - Timer: 3s -> 5s -> OFF -> 3s...
+ * - SRS: Again/Hard/Good/Easy (dueは day単位の小数もOK)
+ * - ボタンに「次まで」を表示 (h/d)
+ * - 裏面に「他の候補」「NOTE」を表示
  */
 
-const APP_STORAGE_KEY = "shunkan_app_state_v5";
-const DATA_STORAGE_KEY = "shunkan_phrases_v5";
-const PROG_STORAGE_KEY = "shunkan_progress_v5";
+const APP_STORAGE_KEY = "shunkan_app_state_v7";
+const DATA_STORAGE_KEY = "shunkan_phrases_v7";
+const PROG_STORAGE_KEY = "shunkan_progress_v7";
 
 /* -------- storage helpers -------- */
 function loadJSON(key){
@@ -32,11 +36,11 @@ function shuffleArray(arr){
   return arr;
 }
 
-/* -------- day helper (LOCAL day int) -------- */
+/* -------- day helper (LOCAL day float) -------- */
 function todayDay(){
   const now = new Date();
   const localMs = now.getTime() - now.getTimezoneOffset() * 60000;
-  return Math.floor(localMs / 86400000);
+  return localMs / 86400000; // float day
 }
 
 /* -------- CSV helpers -------- */
@@ -70,15 +74,20 @@ function splitCSVLine(line){
 }
 
 function parseSlots(slotsRaw){
-  // slotsRaw: "busy:忙しい|tired:疲れている"
   const raw = (slotsRaw || "").trim();
   if(!raw) return [];
 
   const parts = raw.split("|").map(s => s.trim()).filter(Boolean);
   const out = [];
+
   for(const p of parts){
     const idx = p.indexOf(":");
-    if(idx === -1) continue; // invalid
+    if(idx === -1){
+      const v = p.trim();
+      if(!v) continue;
+      out.push({ en: v, jp: v }); // 保険
+      continue;
+    }
     const en = p.slice(0, idx).trim();
     const jp = p.slice(idx+1).trim();
     if(!en || !jp) continue;
@@ -111,9 +120,10 @@ function parseCSV(text){
     if(!jp || !en) continue;
 
     const slotsRaw = (row[2] || "").trim();
+    const note = (row[3] || "").trim();
     const slots = parseSlots(slotsRaw);
 
-    out.push({ jp, en, slotsRaw, slots });
+    out.push({ jp, en, slotsRaw, slots, note });
   }
   return out;
 }
@@ -125,9 +135,9 @@ function toCSV(rows){
     return needs ? `"${v}"` : v;
   };
 
-  const lines = ["JP,EN,SLOTS"];
+  const lines = ["JP,EN,SLOTS,NOTE"];
   for(const r of rows){
-    lines.push(`${escape(r.jp)},${escape(r.en)},${escape(r.slotsRaw || "")}`);
+    lines.push(`${escape(r.jp)},${escape(r.en)},${escape(r.slotsRaw || "")},${escape(r.note || "")}`);
   }
   return lines.join("\n");
 }
@@ -146,56 +156,21 @@ function downloadText(filename, text){
 
 /* -------- stable phrase id -------- */
 function phraseId(p){
-  // templates + slotsRaw で安定（slotがランダムでもIDは固定）
-  return `${p.jp}||${p.en}||${p.slotsRaw || ""}`;
+  return `${p.jp}||${p.en}||${p.slotsRaw || ""}||${p.note || ""}`;
 }
 
-/* -------- slot fill helpers -------- */
-function fillTemplate(template, slot){
-  // slot: {en, jp}
-  if(!template) return "";
-  if(!slot) return template.replaceAll("{x}", "___");
-  // template内の {x} を「文脈に応じて」入れるが、
-  // JP/EN側で呼ぶ側が slot.en / slot.jp を選ぶので、ここでは値を渡す版も使う
-  return template;
-}
+/* -------- template fill -------- */
 function fillJP(templateJP, slot){
   if(!templateJP) return "";
+  if(!templateJP.includes("{x}")) return templateJP;
   if(!slot) return templateJP.replaceAll("{x}", "___");
   return templateJP.replaceAll("{x}", slot.jp);
 }
 function fillEN(templateEN, slot){
   if(!templateEN) return "";
+  if(!templateEN.includes("{x}")) return templateEN;
   if(!slot) return templateEN.replaceAll("{x}", "___");
   return templateEN.replaceAll("{x}", slot.en);
-}
-
-/* -------- pick slot based on level -------- */
-function pickSlotForPhrase(p){
-  if(!p.slots || p.slots.length === 0) return null;
-
-  const id = phraseId(p);
-  // Lv1: 常に先頭（固定）
-  if(state.level === 1){
-    state.slotPickIndex[id] = 0;
-    return p.slots[0];
-  }
-
-  // Lv2: 表示ごとにランダム（カードが切り替わったら選び直す）
-  const existing = state.slotPickIndex[id];
-  if(typeof existing === "number" && p.slots[existing]){
-    return p.slots[existing];
-  }
-  const idx = Math.floor(Math.random() * p.slots.length);
-  state.slotPickIndex[id] = idx;
-  return p.slots[idx];
-}
-
-function clearSlotPickForCurrent(){
-  const idx = currentIndex();
-  if(idx === null) return;
-  const id = phraseId(phrases[idx]);
-  delete state.slotPickIndex[id];
 }
 
 /* -------- defaults -------- */
@@ -204,25 +179,29 @@ const defaultPhrases = [
     jp: "今{x}。",
     en: "I'm {x} right now.",
     slotsRaw: "busy:忙しい|tired:疲れている|free:暇だ",
-    slots: [{en:"busy",jp:"忙しい"},{en:"tired",jp:"疲れている"},{en:"free",jp:"暇だ"}]
+    slots: [],
+    note: "right now は「まさに今」。状況説明でよく使う。"
   },
-  {
-    jp: "それは後でやる。",
-    en: "I'll do it later.",
-    slotsRaw: "",
-    slots: []
-  },
-  {
-    jp: "ちょっと待って。",
-    en: "Hold on a second.",
-    slotsRaw: "",
-    slots: []
-  }
+  { jp: "それは後でやる。", en: "I'll do it later.", slotsRaw: "", slots: [], note: "" },
+  { jp: "ちょっと待って。", en: "Hold on a second.", slotsRaw: "", slots: [], note: "" }
 ];
 
 let phrases = loadJSON(DATA_STORAGE_KEY) || defaultPhrases;
 
-// progress: { [id]: { interval:number, due:number } }
+// 旧保存データの整形（slots/note保証）
+for(const p of phrases){
+  if(typeof p.slotsRaw !== "string") p.slotsRaw = "";
+  if(!Array.isArray(p.slots) || p.slots.length === 0){
+    p.slots = parseSlots(p.slotsRaw);
+  }
+  if(typeof p.note !== "string") p.note = "";
+}
+
+/**
+ * progress: { [id]: { interval:number, due:number } }
+ * - interval: 日数（小数OK）
+ * - due: dayFloat (todayDay基準)
+ */
 let progress = loadJSON(PROG_STORAGE_KEY) || {};
 
 function ensureProgressForAll(){
@@ -233,7 +212,7 @@ function ensureProgressForAll(){
     const id = phraseId(p);
     valid.add(id);
     if(!progress[id]){
-      progress[id] = { interval: 0, due: t };
+      progress[id] = { interval: 0, due: t }; // 初期：今すぐ
     }
   }
   for(const k of Object.keys(progress)){
@@ -254,6 +233,7 @@ const defaultState = {
   favorites: {},            // id: true
   srsOn: true,
   timerOn: true,
+  timerSeconds: 3,          // 3 or 5
   slotPickIndex: {}         // { [id]: number }
 };
 
@@ -290,6 +270,31 @@ function currentIndex(){
   return visible[state.pos];
 }
 
+/* -------- slot pick -------- */
+function pickSlotForPhrase(p){
+  if(!p.slots || p.slots.length === 0) return null;
+
+  const id = phraseId(p);
+
+  if(state.level === 1){
+    state.slotPickIndex[id] = 0;
+    return p.slots[0];
+  }
+
+  const existing = state.slotPickIndex[id];
+  if(typeof existing === "number" && p.slots[existing]) return p.slots[existing];
+
+  const idx = Math.floor(Math.random() * p.slots.length);
+  state.slotPickIndex[id] = idx;
+  return p.slots[idx];
+}
+
+function clearSlotPickForCurrent(){
+  const idx = currentIndex();
+  if(idx === null) return;
+  delete state.slotPickIndex[phraseId(phrases[idx])];
+}
+
 /* -------- TTS -------- */
 function speakEnglish(text){
   if(!("speechSynthesis" in window)) return;
@@ -302,7 +307,7 @@ function speakEnglish(text){
   window.speechSynthesis.speak(uttr);
 }
 
-/* -------- 3-sec timer -------- */
+/* -------- timer -------- */
 let timerId = null;
 let timerCount = 3;
 
@@ -320,7 +325,7 @@ function startTimer(){
   if(!state.timerOn) return;
   if(state.revealed) return;
 
-  timerCount = 3;
+  timerCount = state.timerSeconds;
   const el = document.getElementById("timerText");
   if(el) el.textContent = `⏱ ${timerCount}`;
 
@@ -334,7 +339,7 @@ function startTimer(){
         state.revealed = true;
         render();
 
-        // JP→EN の答え表示時だけ英語を読む（答え=EN）
+        // JP→ENの答え表示時のみ読む
         if(state.mode === "JP_EN"){
           const idx = currentIndex();
           if(idx !== null){
@@ -346,6 +351,71 @@ function startTimer(){
       }
     }
   }, 1000);
+}
+
+/* -------- SRS label helpers -------- */
+function fmtEtaDays(days){
+  if(days <= 0) return "now";
+  const hours = Math.round(days * 24);
+  if(hours < 24) return `${hours}h`;
+  const d = Math.round(days);
+  return `${d}d`;
+}
+
+function computeDue(pr, kind){
+  const t = todayDay();
+
+  if(kind === "AGAIN"){
+    return { interval: 0, due: t };
+  }
+
+  if(kind === "HARD"){
+    // 6時間相当（0.25日）を最低ライン、以降は *1.5（上限あり）
+    const nextInterval = pr.interval <= 0 ? 0.25 : Math.min(365, Math.max(0.25, pr.interval * 1.5));
+    return { interval: nextInterval, due: t + nextInterval };
+  }
+
+  if(kind === "GOOD"){
+    const nextInterval = pr.interval <= 0 ? 1 : Math.min(365, pr.interval * 2);
+    return { interval: nextInterval, due: t + nextInterval };
+  }
+
+  if(kind === "EASY"){
+    const nextInterval = pr.interval <= 0 ? 3 : Math.min(365, pr.interval * 3);
+    return { interval: nextInterval, due: t + nextInterval };
+  }
+
+  return { interval: pr.interval || 0, due: pr.due || t };
+}
+
+function updateSrsButtonLabels(){
+  const idx = currentIndex();
+  if(idx === null) return;
+
+  const p = phrases[idx];
+  const id = phraseId(p);
+  const t = todayDay();
+  const pr = progress[id] || { interval: 0, due: t };
+
+  const again = computeDue(pr, "AGAIN");
+  const hard  = computeDue(pr, "HARD");
+  const good  = computeDue(pr, "GOOD");
+  const easy  = computeDue(pr, "EASY");
+
+  const againEta = "now";
+  const hardEta  = fmtEtaDays(Math.max(0, hard.due - t));
+  const goodEta  = fmtEtaDays(Math.max(0, good.due - t));
+  const easyEta  = fmtEtaDays(Math.max(0, easy.due - t));
+
+  const againBtn = document.getElementById("againBtn");
+  const hardBtn  = document.getElementById("hardBtn");
+  const goodBtn  = document.getElementById("goodBtn");
+  const easyBtn  = document.getElementById("easyBtn");
+
+  if(againBtn) againBtn.textContent = `Again (${againEta})`;
+  if(hardBtn)  hardBtn.textContent  = `Hard (${hardEta})`;
+  if(goodBtn)  goodBtn.textContent  = `Good (${goodEta})`;
+  if(easyBtn)  easyBtn.textContent  = `Easy (${easyEta})`;
 }
 
 /* -------- render -------- */
@@ -373,7 +443,11 @@ function render(){
   if(modeBtn) modeBtn.textContent = state.mode === "JP_EN" ? "JP→EN" : "EN→JP";
   if(onlyFavBtn) onlyFavBtn.textContent = `お気に入りのみ: ${state.favOnly ? "ON" : "OFF"}`;
   if(srsToggleBtn) srsToggleBtn.textContent = `SRS: ${state.srsOn ? "ON" : "OFF"}`;
-  if(timerToggleBtn) timerToggleBtn.textContent = `⏱ 3秒: ${state.timerOn ? "ON" : "OFF"}`;
+
+  if(timerToggleBtn){
+    const label = state.timerOn ? `${state.timerSeconds}s` : "OFF";
+    timerToggleBtn.textContent = `⏱ ${label}`;
+  }
   if(levelToggleBtn) levelToggleBtn.textContent = `Lv: ${state.level}`;
 
   const idx = currentIndex();
@@ -401,14 +475,32 @@ function render(){
   }
 
   const p = phrases[idx];
+  // slots/note 保証（古いデータ対策）
+  if(typeof p.slotsRaw !== "string") p.slotsRaw = "";
+  if(!Array.isArray(p.slots) || p.slots.length === 0){
+    p.slots = parseSlots(p.slotsRaw);
+  }
+  if(typeof p.note !== "string") p.note = "";
+
   const id = phraseId(p);
   const slot = pickSlotForPhrase(p);
 
   const jpFilled = fillJP(p.jp, slot);
   const enFilled = fillEN(p.en, slot);
 
+  // 裏面の追加情報
+  let extra = "";
+
+  if(p.slots && p.slots.length > 0){
+    const opts = p.slots.map(s => s.en).join(" / ");
+    extra += `\n\n他の候補: ${opts}`;
+  }
+  if(p.note && p.note.trim()){
+    extra += `\n\n📝 ${p.note.trim()}`;
+  }
+
   const frontText = (state.mode === "JP_EN") ? jpFilled : enFilled;
-  const backText  = (state.mode === "JP_EN") ? enFilled : jpFilled;
+  const backText  = (state.mode === "JP_EN") ? (enFilled + extra) : (jpFilled + extra);
 
   if(frontEl) frontEl.textContent = frontText;
   if(backEl) backEl.textContent = backText;
@@ -419,6 +511,9 @@ function render(){
     favBtn.disabled = false;
   }
   if(flipBtn) flipBtn.disabled = false;
+
+  // SRSボタンのラベル更新（今のカードに合わせる）
+  updateSrsButtonLabels();
 
   if(state.revealed){
     if(backEl) backEl.classList.remove("hidden");
@@ -441,7 +536,7 @@ function flip(){
   state.revealed = !state.revealed;
   render();
 
-  // JP→EN の答え表示時だけ英語を読む
+  // JP→ENの答え表示時のみ読む
   if(state.revealed && state.mode === "JP_EN"){
     const idx = currentIndex();
     if(idx !== null){
@@ -518,7 +613,15 @@ function toggleSrs(){
 }
 
 function toggleTimer(){
-  state.timerOn = !state.timerOn;
+  // 3s -> 5s -> OFF -> 3s...
+  if(state.timerOn && state.timerSeconds === 3){
+    state.timerSeconds = 5;
+  }else if(state.timerOn && state.timerSeconds === 5){
+    state.timerOn = false;
+  }else{
+    state.timerOn = true;
+    state.timerSeconds = 3;
+  }
   stopTimer();
   render();
 }
@@ -536,7 +639,12 @@ function resetAll(){
   localStorage.removeItem(DATA_STORAGE_KEY);
   localStorage.removeItem(PROG_STORAGE_KEY);
 
-  phrases = defaultPhrases.slice();
+  phrases = defaultPhrases.slice().map(p => ({
+    ...p,
+    slots: parseSlots(p.slotsRaw),
+    note: p.note || ""
+  }));
+
   progress = {};
   ensureProgressForAll();
 
@@ -545,11 +653,7 @@ function resetAll(){
   render();
 }
 
-/* -------- SRS grading --------
- * Again: due=today, interval=0, and move to end (reappear in session)
- * Good:  interval = (0?1:interval*2), due=today+interval
- * Easy:  interval = (0?3:interval*3), due=today+interval
- */
+/* -------- SRS grading -------- */
 function moveCurrentToEnd(){
   const idx = currentIndex();
   if(idx === null) return;
@@ -560,7 +664,7 @@ function moveCurrentToEnd(){
   }
 }
 
-function grade(gradeType){
+function applyGrade(kind){
   const idx = currentIndex();
   if(idx === null) return;
 
@@ -569,31 +673,20 @@ function grade(gradeType){
   const t = todayDay();
   const pr = progress[id] || { interval: 0, due: t };
 
-  if(gradeType === "AGAIN"){
+  if(kind === "AGAIN"){
     pr.interval = 0;
     pr.due = t;
     progress[id] = pr;
     saveProgress();
 
     state.revealed = false;
-
-    // セッション内再登場
     moveCurrentToEnd();
     next();
     return;
   }
 
-  if(gradeType === "GOOD"){
-    pr.interval = pr.interval <= 0 ? 1 : Math.min(365, pr.interval * 2);
-    pr.due = t + pr.interval;
-  }
-
-  if(gradeType === "EASY"){
-    pr.interval = pr.interval <= 0 ? 3 : Math.min(365, pr.interval * 3);
-    pr.due = t + pr.interval;
-  }
-
-  progress[id] = pr;
+  const next = computeDue(pr, kind);
+  progress[id] = { interval: next.interval, due: next.due };
   saveProgress();
 
   state.revealed = false;
@@ -617,13 +710,20 @@ importBtn?.addEventListener("click", () => {
   const text = (csvInput?.value || "").trim();
   const rows = parseCSV(text);
   if(rows.length === 0){
-    if(importMsg) importMsg.textContent = "取り込み失敗：JP,EN,SLOTS のCSVを貼ってね（SLOTSは空でもOK）";
+    if(importMsg) importMsg.textContent = "取り込み失敗：JP,EN,SLOTS,NOTE のCSVを貼ってね";
     return;
   }
 
-  // 進捗引き継ぎ（同一IDは残す）
   const oldProgress = progress;
+
   phrases = rows;
+  // 保証
+  for(const p of phrases){
+    if(!Array.isArray(p.slots) || p.slots.length === 0){
+      p.slots = parseSlots(p.slotsRaw);
+    }
+    if(typeof p.note !== "string") p.note = "";
+  }
 
   progress = {};
   const t = todayDay();
@@ -638,9 +738,7 @@ importBtn?.addEventListener("click", () => {
     if(!valid.has(k)) delete state.favorites[k];
   }
 
-  // slotPickリセット
   state.slotPickIndex = {};
-
   state.favOnly = false;
   state.pos = 0;
   state.revealed = false;
@@ -650,13 +748,13 @@ importBtn?.addEventListener("click", () => {
   saveProgress();
   render();
 
-  if(importMsg) importMsg.textContent = `取り込み成功：${phrases.length}件 登録しました。`;
+  if(importMsg) importMsg.textContent = `取り込み成功：${phrases.length}件`;
 });
 
 exportBtn?.addEventListener("click", () => {
   const csv = toCSV(phrases);
   downloadText("phrases.csv", csv);
-  if(importMsg) importMsg.textContent = "エクスポートしました（ダウンロードが始まります）。";
+  if(importMsg) importMsg.textContent = "エクスポートしました";
 });
 
 /* -------- wiring -------- */
@@ -674,13 +772,15 @@ document.getElementById("srsToggleBtn")?.addEventListener("click", toggleSrs);
 document.getElementById("timerToggleBtn")?.addEventListener("click", toggleTimer);
 document.getElementById("levelToggleBtn")?.addEventListener("click", toggleLevel);
 
-document.getElementById("againBtn")?.addEventListener("click", () => grade("AGAIN"));
-document.getElementById("goodBtn")?.addEventListener("click", () => grade("GOOD"));
-document.getElementById("easyBtn")?.addEventListener("click", () => grade("EASY"));
+// SRS評価
+document.getElementById("againBtn")?.addEventListener("click", () => applyGrade("AGAIN"));
+document.getElementById("hardBtn")?.addEventListener("click", () => applyGrade("HARD"));
+document.getElementById("goodBtn")?.addEventListener("click", () => applyGrade("GOOD"));
+document.getElementById("easyBtn")?.addEventListener("click", () => applyGrade("EASY"));
 
 document.getElementById("card")?.addEventListener("click", flip);
 
-// 🔊 は「現在カードの英語（スロット反映後）」を読む
+// 🔊：現在カードの英語（スロット反映後）を読む
 document.getElementById("ttsBtn")?.addEventListener("click", () => {
   const idx = currentIndex();
   if(idx === null) return;
@@ -693,9 +793,10 @@ window.addEventListener("keydown", (e) => {
   if(e.key === " " || e.key === "Enter") flip();
   if(e.key === "ArrowRight") next();
   if(e.key === "ArrowLeft") prev();
-  if(e.key.toLowerCase() === "a") grade("AGAIN");
-  if(e.key.toLowerCase() === "g") grade("GOOD");
-  if(e.key.toLowerCase() === "e") grade("EASY");
+  if(e.key.toLowerCase() === "a") applyGrade("AGAIN");
+  if(e.key.toLowerCase() === "h") applyGrade("HARD");
+  if(e.key.toLowerCase() === "g") applyGrade("GOOD");
+  if(e.key.toLowerCase() === "e") applyGrade("EASY");
 });
 
 /* -------- init -------- */
