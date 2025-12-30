@@ -106,7 +106,9 @@ function getCurrentBlockIndex() {
 }
 function getClearedCount(blockIndex) {
   const r = getBlockRange(blockIndex);
-  return phrases.filter(p => p.no >= r.start && p.no <= r.end && isCleared(p.no)).length;
+  return phrases.filter(
+    p => p.no >= r.start && p.no <= r.end && isCleared(p.no)
+  ).length;
 }
 
 /*************************************************
@@ -135,20 +137,17 @@ function getDueCount() {
 }
 
 /*************************************************
- * Phrase resolver（Lv2：英語のみ穴埋め）
+ * Phrase resolver（Lv2：日本語フル＋英語穴埋め）
  *************************************************/
 function resolvePhrase(p) {
-  // Lv2 かつ slots があるときだけ穴埋め
   if (p.lv === 2 && p.slots && p.slots.length) {
     const choice = p.slots[Math.floor(Math.random() * p.slots.length)];
     return {
-      jpFull: p.jp.replace("{x}", choice),        // 日本語はフル表示
-      enHole: p.en.replace("{x}", "___"),         // 英語は穴埋め
+      jpFull: p.jp.replace("{x}", choice),
+      enHole: p.en.replace("{x}", "___"),
       enAnswer: p.en.replace("{x}", choice)
     };
   }
-
-  // Lv1 or 固定文
   return {
     jpFull: p.jp,
     enHole: p.en,
@@ -169,7 +168,7 @@ function startOrder(orderIdx) {
 }
 
 /*************************************************
- * 今日のおすすめ（未クリア優先＋Lv1/Lv2バランス）
+ * 今日のおすすめ
  *************************************************/
 function startRecommend() {
   const b = getCurrentBlockIndex();
@@ -193,7 +192,9 @@ function startRecommend() {
     .concat(shuffle(u2).slice(0, 5));
 
   if (picked.length < 10) {
-    picked = picked.concat(shuffle(c1.concat(c2)).slice(0, 10 - picked.length));
+    picked = picked.concat(
+      shuffle(c1.concat(c2)).slice(0, 10 - picked.length)
+    );
   }
 
   const order = shuffle(picked).slice(0, 10).map(x => x.i);
@@ -252,13 +253,6 @@ function render() {
   document.getElementById("card").dataset.answer = p.enAnswer;
 }
 
-// カードタップで裏返す
-document.getElementById("card")?.addEventListener("click", () => {
-  state.revealed = !state.revealed;
-  saveState();
-  render();
-});
-
 /*************************************************
  * SRS grading
  *************************************************/
@@ -316,11 +310,9 @@ function renderPresetChips() {
 }
 
 /*************************************************
- * Events
+ * DOMContentLoaded（超重要）
  *************************************************/
 document.addEventListener("DOMContentLoaded", () => {
-  goHome();
-
   document.getElementById("startRecommend")?.onclick = startRecommend;
   document.getElementById("continueLinear")?.onclick = startLinear;
   document.getElementById("startReview")?.onclick = startReview;
@@ -330,14 +322,13 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("gradeGood")?.onclick = () => grade("GOOD");
   document.getElementById("gradeEasy")?.onclick = () => grade("EASY");
 
+  document.getElementById("goHomeBtn")?.onclick = goHome;
+
   document.getElementById("card")?.addEventListener("click", () => {
     state.revealed = !state.revealed;
     saveState();
     render();
   });
-});
 
-/*************************************************
- * Init
- *************************************************/
-goHome();
+  goHome();
+});
