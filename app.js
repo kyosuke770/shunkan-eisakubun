@@ -3,7 +3,7 @@
  *************************************************/
 const STATE_KEY = "state_v1";
 const SRS_KEY = "srs_v1";
-const BLOCK_KEY = "block_v1"; // no => true（クリア済み）
+const BLOCK_KEY = "block_v1";
 
 /*************************************************
  * Data
@@ -76,9 +76,6 @@ function goPlay() {
 /*************************************************
  * Block helpers（30問単位）
  *************************************************/
-function getBlockIndex(no) {
-  return Math.floor((no - 1) / 30) + 1;
-}
 function getBlockRange(blockIndex) {
   return {
     start: (blockIndex - 1) * 30 + 1,
@@ -127,7 +124,6 @@ function renderHome() {
     `${Math.min(100, (cleared / 30) * 100)}%`;
 
   document.getElementById("reviewCount").textContent = getDueCount();
-
   renderPresetChips();
 }
 
@@ -137,17 +133,29 @@ function getDueCount() {
 }
 
 /*************************************************
- * Phrase resolver（Lv2：日本語フル＋英語穴埋め）
+ * Phrase resolver（★確定版：JP/ENペアSLOTS）
+ *
+ * SLOTS形式:
+ * "終わります=done|準備ができます=ready|着きます=there"
  *************************************************/
 function resolvePhrase(p) {
-  if (p.lv === 2 && p.slots && p.slots.length) {
-    const choice = p.slots[Math.floor(Math.random() * p.slots.length)];
+  // Lv2 + SLOTSあり → ペアスロット処理
+  if (p.lv === 2 && p.slots) {
+    const pairs = p.slots.split("|").map(s => {
+      const [jp, en] = s.split("=");
+      return { jp, en };
+    });
+
+    const choice = pairs[Math.floor(Math.random() * pairs.length)];
+
     return {
-      jpFull: p.jp.replace("{x}", choice),
+      jpFull: p.jp.replace("{x}", choice.jp),
       enHole: p.en.replace("{x}", "___"),
-      enAnswer: p.en.replace("{x}", choice)
+      enAnswer: p.en.replace("{x}", choice.en)
     };
   }
+
+  // Lv1 / 固定文
   return {
     jpFull: p.jp,
     enHole: p.en,
@@ -289,7 +297,7 @@ function grade(key) {
 }
 
 /*************************************************
- * Presets（最小）
+ * Presets
  *************************************************/
 function renderPresetChips() {
   const wrap = document.getElementById("presetChips");
@@ -310,17 +318,24 @@ function renderPresetChips() {
 }
 
 /*************************************************
- * DOMContentLoaded（超重要）
+ * DOM Ready
  *************************************************/
 document.addEventListener("DOMContentLoaded", () => {
-  alert("DOM ready");
+  document.getElementById("startRecommend")?.onclick = startRecommend;
+  document.getElementById("continueLinear")?.onclick = startLinear;
+  document.getElementById("startReview")?.onclick = startReview;
 
-  const btn = document.getElementById("startRecommend");
-  alert("startRecommend exists: " + !!btn);
+  document.getElementById("gradeAgain")?.onclick = () => grade("AGAIN");
+  document.getElementById("gradeHard")?.onclick = () => grade("HARD");
+  document.getElementById("gradeGood")?.onclick = () => grade("GOOD");
+  document.getElementById("gradeEasy")?.onclick = () => grade("EASY");
 
-  btn.addEventListener("click", () => {
-    alert("clicked!");
-    startRecommend();
+  document.getElementById("goHomeBtn")?.onclick = goHome;
+
+  document.getElementById("card")?.addEventListener("click", () => {
+    state.revealed = !state.revealed;
+    saveState();
+    render();
   });
 
   goHome();
