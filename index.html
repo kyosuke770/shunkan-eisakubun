@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>瞬間英作文</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -16,7 +16,6 @@
     <p class="subtitle">今日やることを選ぼう</p>
   </header>
 
-  <!-- 今日のおすすめ -->
   <section class="home-card">
     <h2>🌟 今日のおすすめ</h2>
     <p class="meta">
@@ -26,7 +25,6 @@
     <button class="primary" id="startRecommend">▶ 今日の10問</button>
   </section>
 
-  <!-- 動画順 -->
   <section class="home-card">
     <h2>▶️ 動画順で進める</h2>
     <p class="meta">現在：<strong id="currentBlock">1-30</strong></p>
@@ -39,13 +37,11 @@
     <button class="primary" id="continueLinear">▶ 続きから</button>
   </section>
 
-  <!-- プリセット -->
   <section class="home-card">
     <h2>🎯 学習モード</h2>
     <div id="presetChips" class="chips"></div>
   </section>
 
-  <!-- 復習 -->
   <section class="home-card">
     <h2>🔁 復習</h2>
     <p class="meta">期限切れ：<strong id="reviewCount">0</strong> 問</p>
@@ -58,7 +54,7 @@
 <main id="play" style="display:none">
 
   <header class="play-header">
-    <button class="secondary" onclick="goHome()">← ホーム</button>
+    <button class="secondary" id="goHomeBtn">← ホーム</button>
   </header>
 
   <section id="card">
@@ -75,16 +71,18 @@
 
 </main>
 
-<!-- ===== サンプルデータ（CSV fetch に置き換え可） ===== -->
+<!-- ===== データ（先に定義！） ===== -->
 <script>
 window.phrases = [
-  { no:1, jp:"すぐに終わらせますね。", en:"I'll be quick.", lv:1 },
-  { no:2, jp:"もう少しで{x}。", en:"I'm almost {x}.", slots:["done","there","ready"], lv:2 },
-  { no:3, jp:"お待たせしました。", en:"Sorry for the wait.", lv:1 },
-  { no:4, jp:"今向かっています。", en:"I'm on my way.", lv:1 }
+  { no: 1, jp: "すぐに終わらせますね。", en: "I'll be quick.", lv: 1 },
+  { no: 2, jp: "もう少しで{x}。", en: "I'm almost {x}.", slots: ["done","there","ready"], lv: 2 },
+  { no: 3, jp: "お待たせしました。", en: "Sorry for the wait.", lv: 1 },
+  { no: 4, jp: "今向かっています。", en: "I'm on my way.", lv: 1 }
 ];
 </script>
 
+<!-- ★ 必ず body の一番最後 ★ -->
 <script src="app.js"></script>
+
 </body>
 </html>
