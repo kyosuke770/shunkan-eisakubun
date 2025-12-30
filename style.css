@@ -1,132 +1,127 @@
-*{ box-sizing:border-box; }
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  background:#0b0e1a;
-  color:#eaeaff;
+/* Reset */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
 }
 
-h1,h2{ margin:0 0 8px; }
-
-button{
-  cursor:pointer;
-  border:none;
-  border-radius:12px;
-  padding:12px;
-  font-size:15px;
+/* Base */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0b0e1a;
+  color: #eaeaff;
 }
 
-.primary{
-  background:#4f7cff;
-  color:#fff;
+h1, h2 {
+  margin: 0 0 8px;
 }
-.secondary{
-  background:#1b1f3a;
-  color:#cfd6ff;
+
+button {
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* Buttons */
+.primary {
+  background: #4f7cff;
+  color: #fff;
+}
+.secondary {
+  background: #1b1f3a;
+  color: #cfd6ff;
 }
 
 /* ===== HOME ===== */
-.home-header{
-  padding:20px;
+.home-header {
+  padding: 20px;
 }
-.subtitle{
-  opacity:.7;
-  font-size:14px;
-}
-
-.home-card{
-  background:#111530;
-  border-radius:16px;
-  padding:16px;
-  margin:12px;
+.subtitle {
+  opacity: .7;
+  font-size: 14px;
 }
 
-.progress-bar{
-  width:100%;
-  height:8px;
-  background:#222;
-  border-radius:999px;
-  overflow:hidden;
-  margin:8px 0;
-}
-.progress{
-  height:100%;
-  width:0%;
-  background:linear-gradient(90deg,#4f7cff,#6aa3ff);
+.home-card {
+  background: #111530;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 12px;
 }
 
-/* ===== PRESETS ===== */
-.chips{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:10px;
+.meta {
+  opacity: .9;
+  font-size: 14px;
 }
-.chip{
-  background:#1b1f3a;
-  border-radius:999px;
-  padding:6px 12px;
-  font-size:13px;
+
+/* Progress */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #222;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.progress {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #4f7cff, #6aa3ff);
+}
+
+/* Presets */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  background: #1b1f3a;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 /* ===== PLAY ===== */
-.play-header{
-  padding:12px;
+.play-header {
+  padding: 12px;
 }
 
-#card{
-  margin:20px;
-  padding:30px 20px;
-  background:#14172b;
-  border-radius:20px;
-  text-align:center;
-}
-.jp{
-  font-size:20px;
-  margin-bottom:20px;
-}
-.en{
-  font-size:22px;
-  color:#6aa3ff;
+#card {
+  margin: 20px;
+  padding: 30px 20px;
+  background: #14172b;
+  border-radius: 20px;
+  text-align: center;
+  user-select: none;
 }
 
-.grades{
-  display:flex;
-  gap:8px;
-  padding:12px;
-}
-.grades button{
-  flex:1;
-  background:#222;
-  color:#ddd;
+.jp {
+  font-size: 20px;
+  margin-bottom: 18px;
 }
 
-/* ===== MODAL ===== */
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:flex;
-  align-items:flex-end;
-  z-index:999;
+.en {
+  font-size: 22px;
+  color: #6aa3ff;
+  min-height: 1.5em;
 }
-.modal.hidden{ display:none; }
 
-.modal-sheet{
-  width:100%;
-  max-width:520px;
-  margin:0 auto;
-  background:#0f1220;
-  border-radius:20px 20px 0 0;
-  padding:16px;
+/* Grades */
+.grades {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
 }
-.modal-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+.grades button {
+  flex: 1;
+  background: #222;
+  color: #ddd;
 }
-.icon{
-  background:none;
-  color:#fff;
-  font-size:18px;
+
+/* Small screens */
+@media (max-width: 420px) {
+  .jp { font-size: 18px; }
+  .en { font-size: 20px; }
 }
