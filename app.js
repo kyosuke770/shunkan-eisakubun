@@ -318,14 +318,24 @@ function renderPresetChips() {
 /*************************************************
  * Events
  *************************************************/
-document.getElementById("startRecommend")?.onclick = startRecommend;
-document.getElementById("continueLinear")?.onclick = startLinear;
-document.getElementById("startReview")?.onclick = startReview;
+document.addEventListener("DOMContentLoaded", () => {
+  goHome();
 
-document.getElementById("gradeAgain")?.onclick = () => grade("AGAIN");
-document.getElementById("gradeHard")?.onclick = () => grade("HARD");
-document.getElementById("gradeGood")?.onclick = () => grade("GOOD");
-document.getElementById("gradeEasy")?.onclick = () => grade("EASY");
+  document.getElementById("startRecommend")?.onclick = startRecommend;
+  document.getElementById("continueLinear")?.onclick = startLinear;
+  document.getElementById("startReview")?.onclick = startReview;
+
+  document.getElementById("gradeAgain")?.onclick = () => grade("AGAIN");
+  document.getElementById("gradeHard")?.onclick = () => grade("HARD");
+  document.getElementById("gradeGood")?.onclick = () => grade("GOOD");
+  document.getElementById("gradeEasy")?.onclick = () => grade("EASY");
+
+  document.getElementById("card")?.addEventListener("click", () => {
+    state.revealed = !state.revealed;
+    saveState();
+    render();
+  });
+});
 
 /*************************************************
  * Init
