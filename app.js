@@ -258,6 +258,12 @@ function moveCurrentToEnd(){
 function render(){
   if(!Array.isArray(state.order) || state.order.length !== phrases.length){
     rebuildOrder();
+    // タイマー開始（未表示状態のみ）
+if(!state.revealed){
+  startTimer();
+}else{
+  stopTimer();
+}
   }
 
   const frontEl = document.getElementById("frontText");
@@ -331,6 +337,7 @@ function render(){
 }
 
 function flip(){
+  stopTimer();
   state.revealed = !state.revealed;
   render();
 
@@ -349,6 +356,7 @@ function flip(){
 }
 
 function next(){
+  stopTimer();
   state.revealed = false;
   const visible = getVisibleIndices();
   if(visible.length === 0) return render();
@@ -357,6 +365,7 @@ function next(){
 }
 
 function prev(){
+  stopTimer();
   state.revealed = false;
   const visible = getVisibleIndices();
   if(visible.length === 0) return render();
@@ -397,6 +406,15 @@ function toggleSrs(){
   state.revealed = false;
   state.srsOn = !state.srsOn;
   state.pos = 0;
+  render();
+}
+function toggleTimer(){
+  state.timerOn = !state.timerOn;
+  const btn = document.getElementById("timerToggleBtn");
+  if(btn){
+    btn.textContent = `⏱ 3秒: ${state.timerOn ? "ON" : "OFF"}`;
+  }
+  stopTimer();
   render();
 }
 
@@ -580,6 +598,9 @@ document.getElementById("ttsBtn")?.addEventListener("click", () => {
     speakEnglish(enText);
   }
 });
+document
+  .getElementById("timerToggleBtn")
+  ?.addEventListener("click", toggleTimer);
 // Init
 rebuildOrder();
 render();
