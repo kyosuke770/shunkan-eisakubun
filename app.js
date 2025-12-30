@@ -3,7 +3,7 @@
  *************************************************/
 const STATE_KEY = "state_v1";
 const SRS_KEY = "srs_v1";
-const BLOCK_KEY = "block_v1"; // cleared判定（簡易：no=>true）
+const BLOCK_KEY = "block_v1"; // no => true（クリア済み）
 
 /*************************************************
  * Data
@@ -13,9 +13,9 @@ const phrases = window.phrases || [];
 /*************************************************
  * State
  *************************************************/
-let state = loadState();     // {order,pos,revealed}
-let progress = loadSrs();    // { no: {interval,due} }
-let blockProgress = loadBlock(); // { no: true }
+let state = loadState();     // { order, pos, revealed }
+let progress = loadSrs();   // { no: { interval, due } }
+let blockProgress = loadBlock();
 
 /*************************************************
  * Utils
@@ -74,92 +74,93 @@ function goPlay() {
 }
 
 /*************************************************
- * Block helpers (30問単位)
+ * Block helpers（30問単位）
  *************************************************/
 function getBlockIndex(no) {
   return Math.floor((no - 1) / 30) + 1;
 }
 function getBlockRange(blockIndex) {
-  const start = (blockIndex - 1) * 30 + 1;
-  const end = blockIndex * 30;
-  return { start, end };
+  return {
+    start: (blockIndex - 1) * 30 + 1,
+    end: blockIndex * 30
+  };
 }
-function blockLabelFromBlockIndex(blockIndex) {
-  const { start, end } = getBlockRange(blockIndex);
-  return `${start}-${end}`;
+function blockLabel(blockIndex) {
+  const r = getBlockRange(blockIndex);
+  return `${r.start}-${r.end}`;
 }
 function isCleared(no) {
   return !!blockProgress[no];
 }
-
-// 「続きから」用：最初の未完ブロックを探す
 function getCurrentBlockIndex() {
   if (!phrases.length) return 1;
   const maxNo = Math.max(...phrases.map(p => p.no));
   const totalBlocks = Math.ceil(maxNo / 30);
 
   for (let b = 1; b <= totalBlocks; b++) {
-    const { start, end } = getBlockRange(b);
-    const inBlock = phrases.filter(p => p.no >= start && p.no <= end);
-    if (inBlock.length === 0) continue;
-
-    const uncleared = inBlock.some(p => !isCleared(p.no));
-    if (uncleared) return b; // 未クリアが残ってるブロック
+    const r = getBlockRange(b);
+    const inBlock = phrases.filter(p => p.no >= r.start && p.no <= r.end);
+    if (inBlock.some(p => !isCleared(p.no))) return b;
   }
-  // 全部終わってたら最後のブロック
   return totalBlocks;
 }
-
-function getClearedCountInBlock(blockIndex) {
-  const { start, end } = getBlockRange(blockIndex);
-  let n = 0;
-  for (const p of phrases) {
-    if (p.no >= start && p.no <= end && isCleared(p.no)) n++;
-  }
-  return n;
+function getClearedCount(blockIndex) {
+  const r = getBlockRange(blockIndex);
+  return phrases.filter(p => p.no >= r.start && p.no <= r.end && isCleared(p.no)).length;
 }
 
 /*************************************************
  * Home render
  *************************************************/
 function renderHome() {
-  const currentBlock = getCurrentBlockIndex();
-  const label = blockLabelFromBlockIndex(currentBlock);
+  const b = getCurrentBlockIndex();
 
-  // おすすめ
-  document.getElementById("recommendBlock").textContent = label;
+  document.getElementById("recommendBlock").textContent = blockLabel(b);
   document.getElementById("recommendCount").textContent = "10";
 
-  // 動画順
-  document.getElementById("currentBlock").textContent = label;
-  const cleared = getClearedCountInBlock(currentBlock);
-  document.getElementById("clearedCount").textContent = String(cleared);
+  document.getElementById("currentBlock").textContent = blockLabel(b);
+  const cleared = getClearedCount(b);
+  document.getElementById("clearedCount").textContent = cleared;
   document.getElementById("blockProgressBar").style.width =
-    `${Math.max(0, Math.min(100, (cleared / 30) * 100))}%`;
+    `${Math.min(100, (cleared / 30) * 100)}%`;
 
-  // 復習
-  const due = getDueCount();
-  document.getElementById("reviewCount").textContent = String(due);
+  document.getElementById("reviewCount").textContent = getDueCount();
 
-  // プリセット（今は最小：例を表示）
   renderPresetChips();
 }
 
 function getDueCount() {
   const t = todayDay();
-  let c = 0;
-  for (const p of phrases) {
-    const pr = progress[p.no];
-    if (pr && pr.due <= t) c++;
+  return phrases.filter(p => progress[p.no] && progress[p.no].due <= t).length;
+}
+
+/*************************************************
+ * Phrase resolver（Lv2：英語のみ穴埋め）
+ *************************************************/
+function resolvePhrase(p) {
+  // Lv2 かつ slots があるときだけ穴埋め
+  if (p.lv === 2 && p.slots && p.slots.length) {
+    const choice = p.slots[Math.floor(Math.random() * p.slots.length)];
+    return {
+      jpFull: p.jp.replace("{x}", choice),        // 日本語はフル表示
+      enHole: p.en.replace("{x}", "___"),         // 英語は穴埋め
+      enAnswer: p.en.replace("{x}", choice)
+    };
   }
-  return c;
+
+  // Lv1 or 固定文
+  return {
+    jpFull: p.jp,
+    enHole: p.en,
+    enAnswer: p.en
+  };
 }
 
 /*************************************************
  * Start / Order
  *************************************************/
-function startOrder(orderIdxList) {
-  state.order = orderIdxList;
+function startOrder(orderIdx) {
+  state.order = orderIdx;
   state.pos = 0;
   state.revealed = false;
   saveState();
@@ -168,73 +169,51 @@ function startOrder(orderIdxList) {
 }
 
 /*************************************************
- * 今日のおすすめ（強化版）
- * - 現在ブロック
- * - 未クリア優先
- * - Lv1:5 / Lv2:5（足りなければ補完）
- * - 合計10
+ * 今日のおすすめ（未クリア優先＋Lv1/Lv2バランス）
  *************************************************/
 function startRecommend() {
-  const blockIndex = getCurrentBlockIndex();
-  const { start, end } = getBlockRange(blockIndex);
+  const b = getCurrentBlockIndex();
+  const r = getBlockRange(b);
 
   const pool = phrases
     .map((p, i) => ({ p, i }))
-    .filter(x => x.p.no >= start && x.p.no <= end);
+    .filter(x => x.p.no >= r.start && x.p.no <= r.end);
 
   const uncleared = pool.filter(x => !isCleared(x.p.no));
   const cleared = pool.filter(x => isCleared(x.p.no));
 
-  const uLv1 = uncleared.filter(x => x.p.lv === 1);
-  const uLv2 = uncleared.filter(x => x.p.lv === 2);
-  const cLv1 = cleared.filter(x => x.p.lv === 1);
-  const cLv2 = cleared.filter(x => x.p.lv === 2);
-
-  const targetLv1 = 5;
-  const targetLv2 = 5;
+  const u1 = uncleared.filter(x => x.p.lv === 1);
+  const u2 = uncleared.filter(x => x.p.lv === 2);
+  const c1 = cleared.filter(x => x.p.lv === 1);
+  const c2 = cleared.filter(x => x.p.lv === 2);
 
   let picked = [];
   picked = picked
-    .concat(shuffle(uLv1).slice(0, targetLv1))
-    .concat(shuffle(uLv2).slice(0, targetLv2));
+    .concat(shuffle(u1).slice(0, 5))
+    .concat(shuffle(u2).slice(0, 5));
 
-  // 未クリアだけで10に満たない場合：クリア済みから補完
   if (picked.length < 10) {
-    const rest = 10 - picked.length;
-    picked = picked.concat(shuffle(cLv1.concat(cLv2)).slice(0, rest));
+    picked = picked.concat(shuffle(c1.concat(c2)).slice(0, 10 - picked.length));
   }
 
-  // それでも足りない場合（lvが偏ってる/データ少ない）
-  if (picked.length < 10) {
-    const rest = 10 - picked.length;
-    const already = new Set(picked.map(x => x.i));
-    const fallback = shuffle(pool.filter(x => !already.has(x.i))).slice(0, rest);
-    picked = picked.concat(fallback);
-  }
-
-  // 最終的に10問（順序はランダム）
   const order = shuffle(picked).slice(0, 10).map(x => x.i);
   startOrder(order);
 }
 
 /*************************************************
  * 動画順（続きから）
- * - 現在ブロック
- * - 未クリアのみを NO順（なければブロック全体）
  *************************************************/
 function startLinear() {
-  const blockIndex = getCurrentBlockIndex();
-  const { start, end } = getBlockRange(blockIndex);
+  const b = getCurrentBlockIndex();
+  const r = getBlockRange(b);
 
   const inBlock = phrases
     .map((p, i) => ({ p, i }))
-    .filter(x => x.p.no >= start && x.p.no <= end)
+    .filter(x => x.p.no >= r.start && x.p.no <= r.end)
     .sort((a, b) => a.p.no - b.p.no);
 
-  const uncleared = inBlock.filter(x => !isCleared(x.p.no));
-  const order = (uncleared.length ? uncleared : inBlock).map(x => x.i);
-
-  startOrder(order);
+  const list = inBlock.filter(x => !isCleared(x.p.no));
+  startOrder((list.length ? list : inBlock).map(x => x.i));
 }
 
 /*************************************************
@@ -244,7 +223,7 @@ function startReview() {
   const t = todayDay();
   const idx = phrases
     .map((p, i) => ({ p, i }))
-    .filter(x => (progress[x.p.no]?.due ?? 999999999) <= t)
+    .filter(x => (progress[x.p.no]?.due ?? Infinity) <= t)
     .map(x => x.i);
 
   if (!idx.length) {
@@ -255,22 +234,25 @@ function startReview() {
 }
 
 /*************************************************
- * Card render / flip
+ * Render / Flip
  *************************************************/
 function render() {
-  if (!state.order.length) {
-    document.getElementById("jp").textContent = "";
-    document.getElementById("en").textContent = "データがありません";
-    return;
-  }
   const idx = state.order[state.pos];
-  const p = phrases[idx];
+  const raw = phrases[idx];
+  const p = resolvePhrase(raw);
 
-  document.getElementById("jp").textContent = p.jp;
-  document.getElementById("en").textContent = state.revealed ? p.en : "タップして答え";
+  document.getElementById("jp").textContent = p.jpFull;
+
+  if (!state.revealed) {
+    document.getElementById("en").textContent = "タップして答え";
+  } else {
+    document.getElementById("en").textContent = p.enHole;
+  }
+
+  document.getElementById("card").dataset.answer = p.enAnswer;
 }
 
-// カードタップで裏返す（重要）
+// カードタップで裏返す
 document.getElementById("card")?.addEventListener("click", () => {
   state.revealed = !state.revealed;
   saveState();
@@ -280,29 +262,27 @@ document.getElementById("card")?.addEventListener("click", () => {
 /*************************************************
  * SRS grading
  *************************************************/
-function grade(gradeKey) {
+function grade(key) {
   const idx = state.order[state.pos];
   const p = phrases[idx];
   const now = todayDay();
 
   let s = progress[p.no] || { interval: 0, due: now };
 
-  if (gradeKey === "AGAIN") s.interval = 0;
-  if (gradeKey === "HARD") s.interval = 1;
-  if (gradeKey === "GOOD") s.interval = Math.max(1, (s.interval || 0) * 2);
-  if (gradeKey === "EASY") s.interval = Math.max(2, (s.interval || 0) * 3);
+  if (key === "AGAIN") s.interval = 0;
+  if (key === "HARD") s.interval = 1;
+  if (key === "GOOD") s.interval = Math.max(1, s.interval * 2);
+  if (key === "EASY") s.interval = Math.max(2, s.interval * 3);
 
   s.due = now + s.interval;
   progress[p.no] = s;
   saveSrs();
 
-  // クリア扱い（進捗）
-  if (gradeKey === "GOOD" || gradeKey === "EASY") {
+  if (key === "GOOD" || key === "EASY") {
     blockProgress[p.no] = true;
     saveBlock();
   }
 
-  // 次へ
   state.pos++;
   state.revealed = false;
   saveState();
@@ -315,47 +295,39 @@ function grade(gradeKey) {
 }
 
 /*************************************************
- * Presets (最小：チップだけ)
- * ※管理・保存は後で追加可能
+ * Presets（最小）
  *************************************************/
 function renderPresetChips() {
   const wrap = document.getElementById("presetChips");
   if (!wrap) return;
   wrap.innerHTML = "";
 
-  const defs = [
-    { name: "全部（おすすめ）", action: startRecommend },
-    { name: "動画順（続き）", action: startLinear },
+  [
+    { name: "今日のおすすめ", action: startRecommend },
+    { name: "動画順", action: startLinear },
     { name: "復習", action: startReview }
-  ];
-
-  for (const d of defs) {
+  ].forEach(d => {
     const el = document.createElement("div");
     el.className = "chip";
     el.textContent = d.name;
-    el.addEventListener("click", d.action);
+    el.onclick = d.action;
     wrap.appendChild(el);
-  }
+  });
 }
 
 /*************************************************
- * Events wiring
+ * Events
  *************************************************/
-document.getElementById("startRecommend")?.addEventListener("click", startRecommend);
-document.getElementById("continueLinear")?.addEventListener("click", startLinear);
-document.getElementById("startReview")?.addEventListener("click", startReview);
+document.getElementById("startRecommend")?.onclick = startRecommend;
+document.getElementById("continueLinear")?.onclick = startLinear;
+document.getElementById("startReview")?.onclick = startReview;
 
-document.getElementById("gradeAgain")?.addEventListener("click", () => grade("AGAIN"));
-document.getElementById("gradeHard")?.addEventListener("click", () => grade("HARD"));
-document.getElementById("gradeGood")?.addEventListener("click", () => grade("GOOD"));
-document.getElementById("gradeEasy")?.addEventListener("click", () => grade("EASY"));
+document.getElementById("gradeAgain")?.onclick = () => grade("AGAIN");
+document.getElementById("gradeHard")?.onclick = () => grade("HARD");
+document.getElementById("gradeGood")?.onclick = () => grade("GOOD");
+document.getElementById("gradeEasy")?.onclick = () => grade("EASY");
 
 /*************************************************
  * Init
  *************************************************/
-(function init() {
-  if (!phrases.length) {
-    alert("phrases が空です（CSV読み込み or window.phrases を設定してね）");
-  }
-  goHome();
-})();
+goHome();
