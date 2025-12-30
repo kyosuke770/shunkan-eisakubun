@@ -179,20 +179,33 @@ function startOrder(orderIdx) {
  * 今日のおすすめ
  *************************************************/
 function startRecommend() {
+  if (!phrases || !phrases.length) {
+    alert("phrases が空です");
+    return;
+  }
+
   const b = getCurrentBlockIndex();
   const r = getBlockRange(b);
 
   const pool = phrases
     .map((p, i) => ({ p, i }))
-    .filter(x => x.p.no >= r.start && x.p.no <= r.end);
+    .filter(x => {
+      const no = Number(x.p.no);
+      return !isNaN(no) && no >= r.start && no <= r.end;
+    });
+
+  if (!pool.length) {
+    alert("このブロックに問題がありません");
+    return;
+  }
 
   const uncleared = pool.filter(x => !isCleared(x.p.no));
   const cleared = pool.filter(x => isCleared(x.p.no));
 
-  const u1 = uncleared.filter(x => x.p.lv === 1);
-  const u2 = uncleared.filter(x => x.p.lv === 2);
-  const c1 = cleared.filter(x => x.p.lv === 1);
-  const c2 = cleared.filter(x => x.p.lv === 2);
+  const u1 = uncleared.filter(x => Number(x.p.lv) === 1);
+  const u2 = uncleared.filter(x => Number(x.p.lv) === 2);
+  const c1 = cleared.filter(x => Number(x.p.lv) === 1);
+  const c2 = cleared.filter(x => Number(x.p.lv) === 2);
 
   let picked = [];
   picked = picked
@@ -205,7 +218,12 @@ function startRecommend() {
     );
   }
 
-  const order = shuffle(picked).slice(0, 10).map(x => x.i);
+  if (!picked.length) {
+    alert("出題できる問題がありません");
+    return;
+  }
+
+  const order = shuffle(picked).map(x => x.i);
   startOrder(order);
 }
 
