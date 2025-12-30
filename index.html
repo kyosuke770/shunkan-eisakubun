@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>瞬間英作文</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -17,47 +17,39 @@
   </header>
 
   <!-- 今日のおすすめ -->
-  <section class="home-card recommend">
+  <section class="home-card">
     <h2>🌟 今日のおすすめ</h2>
-    <p>
+    <p class="meta">
       ブロック：<strong id="recommendBlock">1-30</strong><br>
       全 <strong id="recommendCount">10</strong> 問
     </p>
-    <button class="primary" id="startRecommend">▶ 今日の10問を始める</button>
+    <button class="primary" id="startRecommend">▶ 今日の10問</button>
   </section>
 
-  <!-- 動画順モード -->
-  <section class="home-card linear">
+  <!-- 動画順 -->
+  <section class="home-card">
     <h2>▶️ 動画順で進める</h2>
-    <p>現在のブロック：<strong id="currentBlock">1-30</strong></p>
+    <p class="meta">現在：<strong id="currentBlock">1-30</strong></p>
 
     <div class="progress-bar">
       <div class="progress" id="blockProgressBar"></div>
     </div>
-    <p><strong id="clearedCount">0</strong> / 30 クリア</p>
+    <p class="meta"><strong id="clearedCount">0</strong> / 30 クリア</p>
 
-    <button class="primary" id="continueLinear">▶ 続きから進める</button>
-    <button class="secondary" id="selectBlock">ブロックを選択</button>
+    <button class="primary" id="continueLinear">▶ 続きから</button>
   </section>
 
-  <!-- カスタム / プリセット -->
-  <section class="home-card custom">
-    <h2>🎯 カスタム学習</h2>
-
+  <!-- プリセット -->
+  <section class="home-card">
+    <h2>🎯 プリセット</h2>
     <div id="presetChips" class="chips"></div>
-
-    <div class="preset-actions">
-      <button class="secondary" id="openCustom">条件を選ぶ</button>
-      <button class="secondary" id="savePreset">＋ 保存</button>
-      <button class="secondary" id="managePresets">管理</button>
-    </div>
   </section>
 
   <!-- 復習 -->
-  <section class="home-card review">
+  <section class="home-card">
     <h2>🔁 復習</h2>
-    <p>期限切れ：<strong id="reviewCount">0</strong> 問</p>
-    <button class="secondary" id="startReview">▶ 復習する</button>
+    <p class="meta">期限切れ：<strong id="reviewCount">0</strong> 問</p>
+    <button class="secondary" id="startReview">▶ 復習</button>
   </section>
 
 </main>
@@ -66,11 +58,11 @@
 <main id="play" style="display:none">
 
   <header class="play-header">
-    <button class="secondary" onclick="showHome();renderHome();">← ホーム</button>
+    <button class="secondary" onclick="goHome()">← ホーム</button>
   </header>
 
-  <section id="card">
-    <div id="jp" class="jp">日本語</div>
+  <section id="card" aria-label="flashcard">
+    <div id="jp" class="jp"></div>
     <div id="en" class="en">タップして答え</div>
   </section>
 
@@ -83,37 +75,16 @@
 
 </main>
 
-<!-- ================= BLOCK MODAL ================= -->
-<div id="blockModal" class="modal hidden">
-  <div class="modal-sheet">
-    <header class="modal-header">
-      <h2>動画順ブロック</h2>
-      <button id="closeBlockModal" class="icon">✕</button>
-    </header>
-    <div id="blockList"></div>
-  </div>
-</div>
-
-<!-- ================= PRESET MODAL ================= -->
-<div id="presetModal" class="modal hidden">
-  <div class="modal-sheet">
-    <header class="modal-header">
-      <h2>プリセット管理</h2>
-      <button id="closePresetModal" class="icon">✕</button>
-    </header>
-    <div id="presetList"></div>
-  </div>
-</div>
-
-<!-- ================= DATA (サンプル) ================= -->
+<!-- ===== サンプルデータ（CSV fetch に置換可） ===== -->
 <script>
-/* 最低限のサンプル。CSV読み込みに置き換えてOK */
 window.phrases = [
-  { no:1, jp:"すぐに終わらせますね。", en:"I'll be quick.", lv:1, scene:"work", func:"explanation" },
-  { no:2, jp:"もう少しで終わります。", en:"I'm almost done.", lv:2, scene:"daily", func:"explanation" }
+  { no:1, jp:"すぐに終わらせますね。", en:"I'll be quick.", lv:1 },
+  { no:2, jp:"もう少しで終わります。", en:"I'm almost done.", lv:2 },
+  { no:3, jp:"お待たせしました。", en:"Sorry for the wait.", lv:1 },
+  { no:4, jp:"今向かっています。", en:"I'm on my way.", lv:1 }
 ];
 </script>
 
-<script src="app.js?v=1"></script>
+<script src="app.js"></script>
 </body>
 </html>
