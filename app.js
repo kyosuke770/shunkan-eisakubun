@@ -1,7 +1,6 @@
 /*************************************************
  * Storage Keys
  *************************************************/
-alert("app.js loaded");
 const STATE_KEY = "state_v1";
 const SRS_KEY = "srs_v1";
 const BLOCK_KEY = "block_v1"; // no => true（クリア済み）
@@ -314,16 +313,23 @@ function renderPresetChips() {
  * DOMContentLoaded（超重要）
  *************************************************/
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("startRecommend")?.onclick = startRecommend;
-  document.getElementById("continueLinear")?.onclick = startLinear;
-  document.getElementById("startReview")?.onclick = startReview;
+  // デバッグ：ボタンが見えてるか
+  console.log("DOM ready", {
+    startRecommend: !!document.getElementById("startRecommend"),
+    continueLinear: !!document.getElementById("continueLinear"),
+    startReview: !!document.getElementById("startReview"),
+  });
 
-  document.getElementById("gradeAgain")?.onclick = () => grade("AGAIN");
-  document.getElementById("gradeHard")?.onclick = () => grade("HARD");
-  document.getElementById("gradeGood")?.onclick = () => grade("GOOD");
-  document.getElementById("gradeEasy")?.onclick = () => grade("EASY");
+  document.getElementById("startRecommend")?.addEventListener("click", startRecommend);
+  document.getElementById("continueLinear")?.addEventListener("click", startLinear);
+  document.getElementById("startReview")?.addEventListener("click", startReview);
 
-  document.getElementById("goHomeBtn")?.onclick = goHome;
+  document.getElementById("gradeAgain")?.addEventListener("click", () => grade("AGAIN"));
+  document.getElementById("gradeHard")?.addEventListener("click", () => grade("HARD"));
+  document.getElementById("gradeGood")?.addEventListener("click", () => grade("GOOD"));
+  document.getElementById("gradeEasy")?.addEventListener("click", () => grade("EASY"));
+
+  document.getElementById("goHomeBtn")?.addEventListener("click", goHome);
 
   document.getElementById("card")?.addEventListener("click", () => {
     state.revealed = !state.revealed;
