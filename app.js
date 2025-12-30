@@ -2,7 +2,7 @@
  * Storage Keys
  *************************************************/
 const STATE_KEY = "state_v1";
-const SRS_KEY = "srs_v1";
+const SRS_KEY   = "srs_v1";
 const BLOCK_KEY = "block_v1";
 
 /*************************************************
@@ -74,13 +74,10 @@ function goPlay() {
 }
 
 /*************************************************
- * Block helpers（30問単位）
+ * Block helpers
  *************************************************/
 function getBlockRange(blockIndex) {
-  return {
-    start: (blockIndex - 1) * 30 + 1,
-    end: blockIndex * 30
-  };
+  return { start: (blockIndex - 1) * 30 + 1, end: blockIndex * 30 };
 }
 function blockLabel(blockIndex) {
   const r = getBlockRange(blockIndex);
@@ -91,12 +88,18 @@ function isCleared(no) {
 }
 function getCurrentBlockIndex() {
   if (!phrases.length) return 1;
-  const maxNo = Math.max(...phrases.map(p => p.no));
-  const totalBlocks = Math.ceil(maxNo / 30);
+
+  const nos = phrases.map(p => Number(p.no)).filter(n => !isNaN(n));
+  if (!nos.length) return 1;
+
+  const totalBlocks = Math.ceil(Math.max(...nos) / 30);
 
   for (let b = 1; b <= totalBlocks; b++) {
     const r = getBlockRange(b);
-    const inBlock = phrases.filter(p => p.no >= r.start && p.no <= r.end);
+    const inBlock = phrases.filter(p => {
+      const no = Number(p.no);
+      return no >= r.start && no <= r.end;
+    });
     if (inBlock.some(p => !isCleared(p.no))) return b;
   }
   return totalBlocks;
@@ -113,11 +116,10 @@ function getClearedCount(blockIndex) {
  *************************************************/
 function renderHome() {
   const b = getCurrentBlockIndex();
-
   document.getElementById("recommendBlock").textContent = blockLabel(b);
   document.getElementById("recommendCount").textContent = "10";
-
   document.getElementById("currentBlock").textContent = blockLabel(b);
+
   const cleared = getClearedCount(b);
   document.getElementById("clearedCount").textContent = cleared;
   document.getElementById("blockProgressBar").style.width =
@@ -126,36 +128,27 @@ function renderHome() {
   document.getElementById("reviewCount").textContent = getDueCount();
   renderPresetChips();
 }
-
 function getDueCount() {
   const t = todayDay();
   return phrases.filter(p => progress[p.no] && progress[p.no].due <= t).length;
 }
 
 /*************************************************
- * Phrase resolver（★確定版：JP/ENペアSLOTS）
- *
- * SLOTS形式:
- * "終わります=done|準備ができます=ready|着きます=there"
+ * Phrase resolver（JP/ENペアSLOTS）
  *************************************************/
 function resolvePhrase(p) {
-  // Lv2 + SLOTSあり → ペアスロット処理
   if (p.lv === 2 && p.slots) {
     const pairs = p.slots.split("|").map(s => {
       const [jp, en] = s.split("=");
       return { jp, en };
     });
-
     const choice = pairs[Math.floor(Math.random() * pairs.length)];
-
     return {
       jpFull: p.jp.replace("{x}", choice.jp),
       enHole: p.en.replace("{x}", "___"),
       enAnswer: p.en.replace("{x}", choice.en)
     };
   }
-
-  // Lv1 / 固定文
   return {
     jpFull: p.jp,
     enHole: p.en,
@@ -167,11 +160,18 @@ function resolvePhrase(p) {
  * Start / Order
  *************************************************/
 function startOrder(orderIdx) {
-  state.order = orderIdx;
+  state.order = Array.isArray(orderIdx) ? orderIdx : [];
   state.pos = 0;
   state.revealed = false;
   saveState();
+
   goPlay();
+
+  if (!state.order.length) {
+    document.getElementById("jp").textContent = "出題できる問題がありません";
+    document.getElementById("en").textContent = "";
+    return;
+  }
   render();
 }
 
@@ -179,10 +179,7 @@ function startOrder(orderIdx) {
  * 今日のおすすめ
  *************************************************/
 function startRecommend() {
-  if (!phrases || !phrases.length) {
-    alert("phrases が空です");
-    return;
-  }
+  if (!phrases.length) return;
 
   const b = getCurrentBlockIndex();
   const r = getBlockRange(b);
@@ -194,21 +191,15 @@ function startRecommend() {
       return !isNaN(no) && no >= r.start && no <= r.end;
     });
 
-  if (!pool.length) {
-    alert("このブロックに問題がありません");
-    return;
-  }
-
   const uncleared = pool.filter(x => !isCleared(x.p.no));
-  const cleared = pool.filter(x => isCleared(x.p.no));
+  const cleared   = pool.filter(x => isCleared(x.p.no));
 
   const u1 = uncleared.filter(x => Number(x.p.lv) === 1);
   const u2 = uncleared.filter(x => Number(x.p.lv) === 2);
   const c1 = cleared.filter(x => Number(x.p.lv) === 1);
   const c2 = cleared.filter(x => Number(x.p.lv) === 2);
 
-  let picked = [];
-  picked = picked
+  let picked = []
     .concat(shuffle(u1).slice(0, 5))
     .concat(shuffle(u2).slice(0, 5));
 
@@ -218,22 +209,15 @@ function startRecommend() {
     );
   }
 
-  if (!picked.length) {
-    alert("出題できる問題がありません");
-    return;
-  }
-
-  const order = shuffle(picked).map(x => x.i);
-  startOrder(order);
+  startOrder(shuffle(picked).map(x => x.i));
 }
 
 /*************************************************
- * 動画順（続きから）
+ * 動画順 / 復習
  *************************************************/
 function startLinear() {
   const b = getCurrentBlockIndex();
   const r = getBlockRange(b);
-
   const inBlock = phrases
     .map((p, i) => ({ p, i }))
     .filter(x => x.p.no >= r.start && x.p.no <= r.end)
@@ -242,10 +226,6 @@ function startLinear() {
   const list = inBlock.filter(x => !isCleared(x.p.no));
   startOrder((list.length ? list : inBlock).map(x => x.i));
 }
-
-/*************************************************
- * 復習
- *************************************************/
 function startReview() {
   const t = todayDay();
   const idx = phrases
@@ -261,22 +241,21 @@ function startReview() {
 }
 
 /*************************************************
- * Render / Flip
+ * Render（表示専用）
  *************************************************/
 function render() {
+  const jpEl = document.getElementById("jp");
+  const enEl = document.getElementById("en");
+  const card = document.getElementById("card");
+
   const idx = state.order[state.pos];
   const raw = phrases[idx];
   const p = resolvePhrase(raw);
 
-  document.getElementById("jp").textContent = p.jpFull;
+  jpEl.textContent = p.jpFull;
+  enEl.textContent = state.revealed ? p.enHole : "タップして答え";
 
-  if (!state.revealed) {
-    document.getElementById("en").textContent = "タップして答え";
-  } else {
-    document.getElementById("en").textContent = p.enHole;
-  }
-
-  document.getElementById("card").dataset.answer = p.enAnswer;
+  card.dataset.answer = p.enAnswer;
 }
 
 /*************************************************
@@ -288,11 +267,10 @@ function grade(key) {
   const now = todayDay();
 
   let s = progress[p.no] || { interval: 0, due: now };
-
   if (key === "AGAIN") s.interval = 0;
-  if (key === "HARD") s.interval = 1;
-  if (key === "GOOD") s.interval = Math.max(1, s.interval * 2);
-  if (key === "EASY") s.interval = Math.max(2, s.interval * 3);
+  if (key === "HARD")  s.interval = 1;
+  if (key === "GOOD")  s.interval = Math.max(1, s.interval * 2);
+  if (key === "EASY")  s.interval = Math.max(2, s.interval * 3);
 
   s.due = now + s.interval;
   progress[p.no] = s;
@@ -336,17 +314,31 @@ function renderPresetChips() {
 }
 
 /*************************************************
- * DOM Ready
+ * DOM Ready（★タップはここで直接制御）
  *************************************************/
 document.addEventListener("DOMContentLoaded", () => {
-  alert("DOM ready");
+  document.getElementById("startRecommend")?.addEventListener("click", startRecommend);
+  document.getElementById("continueLinear")?.addEventListener("click", startLinear);
+  document.getElementById("startReview")?.addEventListener("click", startReview);
+  document.getElementById("goHomeBtn")?.addEventListener("click", goHome);
 
-  const btn = document.getElementById("startRecommend");
-  alert("startRecommend exists: " + !!btn);
+  document.getElementById("gradeAgain")?.onclick = () => grade("AGAIN");
+  document.getElementById("gradeHard")?.onclick  = () => grade("HARD");
+  document.getElementById("gradeGood")?.onclick  = () => grade("GOOD");
+  document.getElementById("gradeEasy")?.onclick  = () => grade("EASY");
 
-  btn.addEventListener("click", () => {
-    alert("clicked!");
-    startRecommend();
+  // ★ iOS対策：タップ時に必ず表示を切り替える
+  document.getElementById("card")?.addEventListener("click", () => {
+    state.revealed = !state.revealed;
+    saveState();
+
+    const enEl = document.getElementById("en");
+    if (!state.revealed) {
+      enEl.textContent = "タップして答え";
+    } else {
+      enEl.textContent =
+        document.getElementById("card").dataset.answer || "";
+    }
   });
 
   goHome();
