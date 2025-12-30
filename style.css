@@ -1,13 +1,12 @@
-/* Reset */
 * {
   box-sizing: border-box;
 }
+
 html, body {
   margin: 0;
   padding: 0;
 }
 
-/* Base */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #0b0e1a;
@@ -26,11 +25,11 @@ button {
   cursor: pointer;
 }
 
-/* Buttons */
 .primary {
   background: #4f7cff;
   color: #fff;
 }
+
 .secondary {
   background: #1b1f3a;
   color: #cfd6ff;
@@ -40,6 +39,7 @@ button {
 .home-header {
   padding: 20px;
 }
+
 .subtitle {
   opacity: .7;
   font-size: 14px;
@@ -53,8 +53,8 @@ button {
 }
 
 .meta {
-  opacity: .9;
   font-size: 14px;
+  opacity: .9;
 }
 
 /* Progress */
@@ -66,6 +66,7 @@ button {
   overflow: hidden;
   margin: 8px 0;
 }
+
 .progress {
   height: 100%;
   width: 0%;
@@ -78,6 +79,7 @@ button {
   flex-wrap: wrap;
   gap: 8px;
 }
+
 .chip {
   background: #1b1f3a;
   border-radius: 999px;
@@ -116,13 +118,13 @@ button {
   gap: 8px;
   padding: 12px;
 }
+
 .grades button {
   flex: 1;
   background: #222;
   color: #ddd;
 }
 
-/* Small screens */
 @media (max-width: 420px) {
   .jp { font-size: 18px; }
   .en { font-size: 20px; }
