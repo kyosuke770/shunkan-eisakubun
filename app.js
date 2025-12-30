@@ -1,6 +1,7 @@
 /*************************************************
  * Storage Keys
  *************************************************/
+alert("app.js loaded");
 const STATE_KEY = "state_v1";
 const SRS_KEY = "srs_v1";
 const BLOCK_KEY = "block_v1"; // no => true（クリア済み）
