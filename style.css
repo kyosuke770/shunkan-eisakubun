@@ -137,3 +137,10 @@ code{background:rgba(255,255,255,.08); padding:2px 6px; border-radius:8px}
 .actions { flex-wrap: wrap; }
 .actions .btn { min-width: 0; }
 .btn.small { font-size: 13px; padding: 8px 10px; }
+.timer{
+  text-align:center;
+  font-size:18px;
+  font-weight:700;
+  color:#9fb4ff;
+  margin-top:6px;
+}
