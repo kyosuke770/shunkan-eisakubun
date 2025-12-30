@@ -321,21 +321,14 @@ function renderPresetChips() {
  * DOM Ready
  *************************************************/
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("startRecommend")?.onclick = startRecommend;
-  document.getElementById("continueLinear")?.onclick = startLinear;
-  document.getElementById("startReview")?.onclick = startReview;
+  alert("DOM ready");
 
-  document.getElementById("gradeAgain")?.onclick = () => grade("AGAIN");
-  document.getElementById("gradeHard")?.onclick = () => grade("HARD");
-  document.getElementById("gradeGood")?.onclick = () => grade("GOOD");
-  document.getElementById("gradeEasy")?.onclick = () => grade("EASY");
+  const btn = document.getElementById("startRecommend");
+  alert("startRecommend exists: " + !!btn);
 
-  document.getElementById("goHomeBtn")?.onclick = goHome;
-
-  document.getElementById("card")?.addEventListener("click", () => {
-    state.revealed = !state.revealed;
-    saveState();
-    render();
+  btn.addEventListener("click", () => {
+    alert("clicked!");
+    startRecommend();
   });
 
   goHome();
