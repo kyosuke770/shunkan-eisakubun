@@ -294,6 +294,19 @@ function render(){
 function flip(){
   state.revealed = !state.revealed;
   render();
+
+  // 表示されたら英語を自動再生
+  if(state.revealed){
+    const idx = currentIndex();
+    if(idx !== null){
+      const item = phrases[idx];
+      const enText = state.mode === "JP_EN" ? item.en : item.jp;
+      // JP→ENモードのときだけ英語を読む
+      if(state.mode === "JP_EN"){
+        speakEnglish(enText);
+      }
+    }
+  }
 }
 
 function next(){
