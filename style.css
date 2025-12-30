@@ -1,5 +1,7 @@
 /* Reset */
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 html, body {
   margin: 0;
   padding: 0;
@@ -79,8 +81,8 @@ button {
 .chip {
   background: #1b1f3a;
   border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
+  padding: 8px 14px;
+  font-size: 14px;
 }
 
 /* ===== PLAY ===== */
