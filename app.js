@@ -154,7 +154,8 @@ const defaultState = {
   revealed: false,
   favOnly: false,
   favorites: {},   // id: true（indexじゃなくIDで保持）
-  srsOn: true
+  srsOn: true,
+  timerOn: true
 };
 
 const state = Object.assign({}, defaultState, loadJSON(APP_STORAGE_KEY) || {});
