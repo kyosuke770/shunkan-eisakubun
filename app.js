@@ -1,19 +1,19 @@
 /**
- * app.js v7
+ * app.js v8（見やすさ改善 ①②③ + CSV4列）
  * CSV: JP,EN,SLOTS,NOTE
- * - SLOTS: en:jp|en:jp|...  (保険で en|en|... も受理 -> jp=en)
- * - {x} は JP/EN 両方に入れてOK（無いなら固定文）
+ * - SLOTS: en:jp|en:jp|...（保険で en|en|... もOK -> jp=en）
  * - Lv1: slotsがあっても先頭固定
- * - Lv2: slotsがあればランダム（カードが切り替わるたび選び直し）
+ * - Lv2: slotsがあればランダム（カード切替ごとに選び直し）
  * - Timer: 3s -> 5s -> OFF -> 3s...
- * - SRS: Again/Hard/Good/Easy (dueは day単位の小数もOK)
- * - ボタンに「次まで」を表示 (h/d)
- * - 裏面に「他の候補」「NOTE」を表示
+ * - SRS: Again/Hard/Good/Easy（時間表示は無し）
+ * - 裏面：答えを太字、候補/NOTEは折りたたみ（details）
+ * - SRSボタンは答え表示のときだけ出す
+ * - カードはmax-heightで伸びすぎない
  */
 
-const APP_STORAGE_KEY = "shunkan_app_state_v7";
-const DATA_STORAGE_KEY = "shunkan_phrases_v7";
-const PROG_STORAGE_KEY = "shunkan_progress_v7";
+const APP_STORAGE_KEY = "shunkan_app_state_v8";
+const DATA_STORAGE_KEY = "shunkan_phrases_v8";
+const PROG_STORAGE_KEY = "shunkan_progress_v8";
 
 /* -------- storage helpers -------- */
 function loadJSON(key){
@@ -36,11 +36,24 @@ function shuffleArray(arr){
   return arr;
 }
 
-/* -------- day helper (LOCAL day float) -------- */
+/* -------- time helper (LOCAL day float) -------- */
 function todayDay(){
   const now = new Date();
   const localMs = now.getTime() - now.getTimezoneOffset() * 60000;
-  return localMs / 86400000; // float day
+  return localMs / 86400000;
+}
+
+/* -------- safe HTML (because we use innerHTML) -------- */
+function escapeHTML(str){
+  return (str ?? "").toString()
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#39;");
+}
+function nl2brSafe(str){
+  return escapeHTML(str).replace(/\n/g, "<br>");
 }
 
 /* -------- CSV helpers -------- */
@@ -156,6 +169,7 @@ function downloadText(filename, text){
 
 /* -------- stable phrase id -------- */
 function phraseId(p){
+  // NOTEも含めてIDにする（NOTE変更で別カード扱い）
   return `${p.jp}||${p.en}||${p.slotsRaw || ""}||${p.note || ""}`;
 }
 
@@ -188,7 +202,7 @@ const defaultPhrases = [
 
 let phrases = loadJSON(DATA_STORAGE_KEY) || defaultPhrases;
 
-// 旧保存データの整形（slots/note保証）
+// slots/note 保証（旧データ互換）
 for(const p of phrases){
   if(typeof p.slotsRaw !== "string") p.slotsRaw = "";
   if(!Array.isArray(p.slots) || p.slots.length === 0){
@@ -200,7 +214,7 @@ for(const p of phrases){
 /**
  * progress: { [id]: { interval:number, due:number } }
  * - interval: 日数（小数OK）
- * - due: dayFloat (todayDay基準)
+ * - due: todayDay基準の dayFloat
  */
 let progress = loadJSON(PROG_STORAGE_KEY) || {};
 
@@ -212,7 +226,7 @@ function ensureProgressForAll(){
     const id = phraseId(p);
     valid.add(id);
     if(!progress[id]){
-      progress[id] = { interval: 0, due: t }; // 初期：今すぐ
+      progress[id] = { interval: 0, due: t };
     }
   }
   for(const k of Object.keys(progress)){
@@ -302,8 +316,6 @@ function speakEnglish(text){
   const uttr = new SpeechSynthesisUtterance(text);
   uttr.lang = "en-US";
   uttr.rate = 1.0;
-  uttr.pitch = 1.0;
-  uttr.volume = 1.0;
   window.speechSynthesis.speak(uttr);
 }
 
@@ -353,71 +365,6 @@ function startTimer(){
   }, 1000);
 }
 
-/* -------- SRS label helpers -------- */
-function fmtEtaDays(days){
-  if(days <= 0) return "now";
-  const hours = Math.round(days * 24);
-  if(hours < 24) return `${hours}h`;
-  const d = Math.round(days);
-  return `${d}d`;
-}
-
-function computeDue(pr, kind){
-  const t = todayDay();
-
-  if(kind === "AGAIN"){
-    return { interval: 0, due: t };
-  }
-
-  if(kind === "HARD"){
-    // 6時間相当（0.25日）を最低ライン、以降は *1.5（上限あり）
-    const nextInterval = pr.interval <= 0 ? 0.25 : Math.min(365, Math.max(0.25, pr.interval * 1.5));
-    return { interval: nextInterval, due: t + nextInterval };
-  }
-
-  if(kind === "GOOD"){
-    const nextInterval = pr.interval <= 0 ? 1 : Math.min(365, pr.interval * 2);
-    return { interval: nextInterval, due: t + nextInterval };
-  }
-
-  if(kind === "EASY"){
-    const nextInterval = pr.interval <= 0 ? 3 : Math.min(365, pr.interval * 3);
-    return { interval: nextInterval, due: t + nextInterval };
-  }
-
-  return { interval: pr.interval || 0, due: pr.due || t };
-}
-
-function updateSrsButtonLabels(){
-  const idx = currentIndex();
-  if(idx === null) return;
-
-  const p = phrases[idx];
-  const id = phraseId(p);
-  const t = todayDay();
-  const pr = progress[id] || { interval: 0, due: t };
-
-  const again = computeDue(pr, "AGAIN");
-  const hard  = computeDue(pr, "HARD");
-  const good  = computeDue(pr, "GOOD");
-  const easy  = computeDue(pr, "EASY");
-
-  const againEta = "now";
-  const hardEta  = fmtEtaDays(Math.max(0, hard.due - t));
-  const goodEta  = fmtEtaDays(Math.max(0, good.due - t));
-  const easyEta  = fmtEtaDays(Math.max(0, easy.due - t));
-
-  const againBtn = document.getElementById("againBtn");
-  const hardBtn  = document.getElementById("hardBtn");
-  const goodBtn  = document.getElementById("goodBtn");
-  const easyBtn  = document.getElementById("easyBtn");
-
-  if(againBtn) againBtn.textContent = `Again (${againEta})`;
-  if(hardBtn)  hardBtn.textContent  = `Hard (${hardEta})`;
-  if(goodBtn)  goodBtn.textContent  = `Good (${goodEta})`;
-  if(easyBtn)  easyBtn.textContent  = `Easy (${easyEta})`;
-}
-
 /* -------- render -------- */
 function render(){
   if(!Array.isArray(state.order) || state.order.length !== phrases.length){
@@ -425,8 +372,8 @@ function render(){
   }
 
   const frontEl = document.getElementById("frontText");
-  const backEl = document.getElementById("backText");
-  const hintEl = document.getElementById("hintText");
+  const backEl  = document.getElementById("backText");
+  const hintEl  = document.getElementById("hintText");
   const badgeEl = document.getElementById("indexBadge");
 
   const modeBtn = document.getElementById("modeBtn");
@@ -436,6 +383,7 @@ function render(){
   const srsToggleBtn = document.getElementById("srsToggleBtn");
   const timerToggleBtn = document.getElementById("timerToggleBtn");
   const levelToggleBtn = document.getElementById("levelToggleBtn");
+  const srsArea = document.getElementById("srsArea");
 
   const visible = getVisibleIndices();
   if(badgeEl) badgeEl.textContent = visible.length ? `${state.pos+1} / ${visible.length}` : `0 / 0`;
@@ -443,12 +391,16 @@ function render(){
   if(modeBtn) modeBtn.textContent = state.mode === "JP_EN" ? "JP→EN" : "EN→JP";
   if(onlyFavBtn) onlyFavBtn.textContent = `お気に入りのみ: ${state.favOnly ? "ON" : "OFF"}`;
   if(srsToggleBtn) srsToggleBtn.textContent = `SRS: ${state.srsOn ? "ON" : "OFF"}`;
-
   if(timerToggleBtn){
     const label = state.timerOn ? `${state.timerSeconds}s` : "OFF";
     timerToggleBtn.textContent = `⏱ ${label}`;
   }
   if(levelToggleBtn) levelToggleBtn.textContent = `Lv: ${state.level}`;
+
+  // ②：SRSは答え表示のときだけ
+  if(srsArea){
+    srsArea.classList.toggle("show", state.revealed);
+  }
 
   const idx = currentIndex();
   if(idx === null){
@@ -458,11 +410,11 @@ function render(){
     if(frontEl && backEl && hintEl){
       if(state.srsOn && !anyDue){
         frontEl.textContent = "今日の復習は完了！";
-        backEl.textContent = "SRSをOFFにすると全件練習できます。";
+        backEl.innerHTML = `<div class="answer">Nice.</div><div class="detailsWrap"><div class="extraBody">SRSをOFFにすると全件練習できます。</div></div>`;
         hintEl.textContent = "SRSを切り替えてみて";
       }else{
         frontEl.textContent = "表示できるカードがありません。";
-        backEl.textContent = "フィルタ（お気に入り / SRS）を確認してね。";
+        backEl.innerHTML = `<div class="answer">No cards.</div><div class="detailsWrap"><div class="extraBody">フィルタ（お気に入り / SRS）を確認してね。</div></div>`;
         hintEl.textContent = "設定を切り替えてみて";
       }
       backEl.classList.remove("hidden");
@@ -475,7 +427,7 @@ function render(){
   }
 
   const p = phrases[idx];
-  // slots/note 保証（古いデータ対策）
+  // slots/note 保証
   if(typeof p.slotsRaw !== "string") p.slotsRaw = "";
   if(!Array.isArray(p.slots) || p.slots.length === 0){
     p.slots = parseSlots(p.slotsRaw);
@@ -488,22 +440,40 @@ function render(){
   const jpFilled = fillJP(p.jp, slot);
   const enFilled = fillEN(p.en, slot);
 
-  // 裏面の追加情報
-  let extra = "";
-
-  if(p.slots && p.slots.length > 0){
-    const opts = p.slots.map(s => s.en).join(" / ");
-    extra += `\n\n他の候補: ${opts}`;
-  }
-  if(p.note && p.note.trim()){
-    extra += `\n\n📝 ${p.note.trim()}`;
-  }
-
   const frontText = (state.mode === "JP_EN") ? jpFilled : enFilled;
-  const backText  = (state.mode === "JP_EN") ? (enFilled + extra) : (jpFilled + extra);
-
   if(frontEl) frontEl.textContent = frontText;
-  if(backEl) backEl.textContent = backText;
+
+  // ①：裏は「答え」＋ details（候補/NOTE）
+  const answerText = (state.mode === "JP_EN") ? enFilled : jpFilled;
+
+  const hasOptions = (p.slots && p.slots.length > 0);
+  const hasNote = !!(p.note && p.note.trim());
+
+  const optionsHTML = hasOptions
+    ? `
+      <details class="extra">
+        <summary>他の候補</summary>
+        <div class="extraBody">${escapeHTML(p.slots.map(s => s.en).join(" / "))}</div>
+      </details>
+    `
+    : "";
+
+  const noteHTML = hasNote
+    ? `
+      <details class="extra">
+        <summary>解説・ニュアンス</summary>
+        <div class="extraBody">${nl2brSafe(p.note.trim())}</div>
+      </details>
+    `
+    : "";
+
+  const wrapHTML = (hasOptions || hasNote)
+    ? `<div class="detailsWrap">${optionsHTML}${noteHTML}</div>`
+    : "";
+
+  if(backEl){
+    backEl.innerHTML = `<div class="answer">${escapeHTML(answerText)}</div>${wrapHTML}`;
+  }
 
   if(favBtn){
     const isFav = !!state.favorites[id];
@@ -511,9 +481,6 @@ function render(){
     favBtn.disabled = false;
   }
   if(flipBtn) flipBtn.disabled = false;
-
-  // SRSボタンのラベル更新（今のカードに合わせる）
-  updateSrsButtonLabels();
 
   if(state.revealed){
     if(backEl) backEl.classList.remove("hidden");
@@ -653,7 +620,12 @@ function resetAll(){
   render();
 }
 
-/* -------- SRS grading -------- */
+/* -------- SRS grading (no time labels) --------
+ * Again: due=now
+ * Hard:  0->0.25d(6h), else *1.5
+ * Good:  0->1d, else *2
+ * Easy:  0->3d, else *3
+ */
 function moveCurrentToEnd(){
   const idx = currentIndex();
   if(idx === null) return;
@@ -685,10 +657,22 @@ function applyGrade(kind){
     return;
   }
 
-  const next = computeDue(pr, kind);
-  progress[id] = { interval: next.interval, due: next.due };
-  saveProgress();
+  if(kind === "HARD"){
+    const nextInterval = pr.interval <= 0 ? 0.25 : Math.min(365, Math.max(0.25, pr.interval * 1.5));
+    progress[id] = { interval: nextInterval, due: t + nextInterval };
+  }
 
+  if(kind === "GOOD"){
+    const nextInterval = pr.interval <= 0 ? 1 : Math.min(365, pr.interval * 2);
+    progress[id] = { interval: nextInterval, due: t + nextInterval };
+  }
+
+  if(kind === "EASY"){
+    const nextInterval = pr.interval <= 0 ? 3 : Math.min(365, pr.interval * 3);
+    progress[id] = { interval: nextInterval, due: t + nextInterval };
+  }
+
+  saveProgress();
   state.revealed = false;
   next();
 }
@@ -717,8 +701,8 @@ importBtn?.addEventListener("click", () => {
   const oldProgress = progress;
 
   phrases = rows;
-  // 保証
   for(const p of phrases){
+    if(typeof p.slotsRaw !== "string") p.slotsRaw = "";
     if(!Array.isArray(p.slots) || p.slots.length === 0){
       p.slots = parseSlots(p.slotsRaw);
     }
