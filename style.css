@@ -93,6 +93,7 @@ textarea{
   background:#0e0e16;
   color:var(--text);
   font-size:14px;
+  line-height:1.4;
 }
 .row{ display:flex; gap:10px }
 .row .btn{ flex:1 }
@@ -113,6 +114,7 @@ code{ background:rgba(255,255,255,.08); padding:2px 6px; border-radius:8px }
   justify-content:center;
   gap:10px;
   user-select:none;
+  white-space:pre-line; /* \n を効かせる */
 }
 .badge{
   position:absolute;
