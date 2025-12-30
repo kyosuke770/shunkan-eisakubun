@@ -1,88 +1,119 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#111111" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>瞬間英作文</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="app">
-    <header class="top">
-      <div class="title">瞬間英作文</div>
-      <div class="mode">
-        <button id="modeBtn" class="btn small">JP→EN</button>
-        <button id="shuffleBtn" class="btn small">シャッフル</button>
-      </div>
+
+<!-- ================= HOME ================= -->
+<main id="home">
+
+  <header class="home-header">
+    <h1>瞬間英作文</h1>
+    <p class="subtitle">今日やることを選ぼう</p>
+  </header>
+
+  <!-- 今日のおすすめ -->
+  <section class="home-card recommend">
+    <h2>🌟 今日のおすすめ</h2>
+    <p>
+      ブロック：<strong id="recommendBlock">1-30</strong><br>
+      全 <strong id="recommendCount">10</strong> 問
+    </p>
+    <button class="primary" id="startRecommend">▶ 今日の10問を始める</button>
+  </section>
+
+  <!-- 動画順モード -->
+  <section class="home-card linear">
+    <h2>▶️ 動画順で進める</h2>
+    <p>現在のブロック：<strong id="currentBlock">1-30</strong></p>
+
+    <div class="progress-bar">
+      <div class="progress" id="blockProgressBar"></div>
+    </div>
+    <p><strong id="clearedCount">0</strong> / 30 クリア</p>
+
+    <button class="primary" id="continueLinear">▶ 続きから進める</button>
+    <button class="secondary" id="selectBlock">ブロックを選択</button>
+  </section>
+
+  <!-- カスタム / プリセット -->
+  <section class="home-card custom">
+    <h2>🎯 カスタム学習</h2>
+
+    <div id="presetChips" class="chips"></div>
+
+    <div class="preset-actions">
+      <button class="secondary" id="openCustom">条件を選ぶ</button>
+      <button class="secondary" id="savePreset">＋ 保存</button>
+      <button class="secondary" id="managePresets">管理</button>
+    </div>
+  </section>
+
+  <!-- 復習 -->
+  <section class="home-card review">
+    <h2>🔁 復習</h2>
+    <p>期限切れ：<strong id="reviewCount">0</strong> 問</p>
+    <button class="secondary" id="startReview">▶ 復習する</button>
+  </section>
+
+</main>
+
+<!-- ================= PLAY ================= -->
+<main id="play" style="display:none">
+
+  <header class="play-header">
+    <button class="secondary" onclick="showHome();renderHome();">← ホーム</button>
+  </header>
+
+  <section id="card">
+    <div id="jp" class="jp">日本語</div>
+    <div id="en" class="en">タップして答え</div>
+  </section>
+
+  <section class="grades">
+    <button id="gradeAgain">Again</button>
+    <button id="gradeHard">Hard</button>
+    <button id="gradeGood">Good</button>
+    <button id="gradeEasy">Easy</button>
+  </section>
+
+</main>
+
+<!-- ================= BLOCK MODAL ================= -->
+<div id="blockModal" class="modal hidden">
+  <div class="modal-sheet">
+    <header class="modal-header">
+      <h2>動画順ブロック</h2>
+      <button id="closeBlockModal" class="icon">✕</button>
     </header>
+    <div id="blockList"></div>
+  </div>
+</div>
 
-    <!-- CSV 管理（畳み） -->
-    <section class="panel">
-      <div class="panelHead" id="csvHeader">
-        <div class="panelTitle">＋ データ管理（CSV）</div>
-      </div>
-      <div id="csvArea" class="csvArea hidden">
-        <p class="sub">
-          形式：<code>JP,EN,SLOTS,NOTE</code><br />
-          SLOTS例：<code>busy:忙しい|tired:疲れている|free:暇だ</code><br />
-          NOTE：ニュアンス/注意点（任意）
-        </p>
-        <textarea id="csvInput" rows="7" placeholder="ここにCSVを貼り付け"></textarea>
-        <div class="row">
-          <button id="importBtn" class="btn primary">取り込み</button>
-          <button id="exportBtn" class="btn">エクスポート</button>
-        </div>
-        <div id="importMsg" class="sub"></div>
-      </div>
-    </section>
+<!-- ================= PRESET MODAL ================= -->
+<div id="presetModal" class="modal hidden">
+  <div class="modal-sheet">
+    <header class="modal-header">
+      <h2>プリセット管理</h2>
+      <button id="closePresetModal" class="icon">✕</button>
+    </header>
+    <div id="presetList"></div>
+  </div>
+</div>
 
-    <!-- カード -->
-    <section class="card" id="card" tabindex="0">
-      <div class="badge" id="indexBadge">0 / 0</div>
-      <div class="front" id="frontText"></div>
+<!-- ================= DATA (サンプル) ================= -->
+<script>
+/* 最低限のサンプル。CSV読み込みに置き換えてOK */
+window.phrases = [
+  { no:1, jp:"すぐに終わらせますね。", en:"I'll be quick.", lv:1, scene:"work", func:"explanation" },
+  { no:2, jp:"もう少しで終わります。", en:"I'm almost done.", lv:2, scene:"daily", func:"explanation" }
+];
+</script>
 
-      <!-- 裏（HTMLで表示：候補/NOTEは折りたたみ） -->
-      <div class="back hidden" id="backText"></div>
-
-      <div class="hint" id="hintText">タップで答え</div>
-      <div class="timer" id="timerText"></div>
-    </section>
-
-    <!-- ナビ -->
-    <section class="actions">
-      <button id="prevBtn" class="btn">← 前</button>
-      <button id="flipBtn" class="btn primary">答え</button>
-      <button id="nextBtn" class="btn">次 →</button>
-    </section>
-
-    <!-- SRS評価（答え表示のときだけ出す） -->
-    <section class="actions srs" id="srsArea">
-      <button id="againBtn" class="btn">Again</button>
-      <button id="hardBtn" class="btn">Hard</button>
-      <button id="goodBtn" class="btn primary">Good</button>
-      <button id="easyBtn" class="btn">Easy</button>
-    </section>
-
-    <!-- 設定 -->
-    <section class="bottom">
-      <button id="levelToggleBtn" class="btn small">Lv: 1</button>
-      <button id="ttsBtn" class="btn small">🔊 英語</button>
-      <button id="timerToggleBtn" class="btn small">⏱ 3s</button>
-      <button id="srsToggleBtn" class="btn small">SRS: ON</button>
-      <button id="favBtn" class="btn small">☆ お気に入り</button>
-      <button id="onlyFavBtn" class="btn small">お気に入りのみ: OFF</button>
-      <button id="resetBtn" class="btn small danger">データ初期化</button>
-    </section>
-
-    <footer class="footer">
-      <small>データは端末内に保存（外部送信なし）</small>
-    </footer>
-  </main>
-
-  <!-- キャッシュが強いときは v=数字 を変える -->
-  <script src="app.js?v=8"></script>
+<script src="app.js?v=1"></script>
 </body>
 </html>
