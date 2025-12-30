@@ -19,17 +19,14 @@
       </div>
     </header>
 
-    <!-- CSVパネル -->
+    <!-- CSV 管理（畳み） -->
     <section class="panel">
-      <div class="panelHead">
-        <div class="panelTitle">CSVを貼り付けて一括登録</div>
-        <button id="toggleCsvBtn" class="btn small">開く</button>
+      <div class="panelHead" id="csvHeader">
+        <div class="panelTitle">＋ データ管理（CSV）</div>
       </div>
-
       <div id="csvArea" class="csvArea hidden">
         <p class="sub">
-          形式：<code>JP,EN</code>（1行1ペア）<br/>
-          例：<code>私は今忙しい,I'm busy right now.</code>
+          形式：<code>JP,EN</code>（1行1ペア）
         </p>
         <textarea id="csvInput" rows="6" placeholder="ここにCSVを貼り付け"></textarea>
         <div class="row">
@@ -40,34 +37,36 @@
       </div>
     </section>
 
+    <!-- カード -->
     <section class="card" id="card" tabindex="0">
-      <div class="badge" id="indexBadge">1 / 1</div>
+      <div class="badge" id="indexBadge">0 / 0</div>
       <div class="front" id="frontText"></div>
       <div class="back hidden" id="backText"></div>
       <div class="hint" id="hintText">タップで答え</div>
       <div class="timer" id="timerText"></div>
     </section>
 
-<section class="actions">
-  <button id="prevBtn" class="btn">← 前</button>
-  <button id="flipBtn" class="btn primary">答え</button>
-  <button id="nextBtn" class="btn">次 →</button>
-</section>
+    <!-- ナビ -->
+    <section class="actions">
+      <button id="prevBtn" class="btn">← 前</button>
+      <button id="flipBtn" class="btn primary">答え</button>
+      <button id="nextBtn" class="btn">次 →</button>
+    </section>
 
-<section class="actions">
-  <button id="againBtn" class="btn">Again</button>
-  <button id="goodBtn" class="btn primary">Good</button>
-  <button id="easyBtn" class="btn">Easy</button>
-  <button id="ttsBtn" class="btn small">🔊 再生</button>
-</section>
+    <!-- SRS評価 -->
+    <section class="actions">
+      <button id="againBtn" class="btn">Again</button>
+      <button id="goodBtn" class="btn primary">Good</button>
+      <button id="easyBtn" class="btn">Easy</button>
+    </section>
 
-
-
+    <!-- 設定 -->
     <section class="bottom">
+      <button id="ttsBtn" class="btn small">🔊 再生</button>
+      <button id="timerToggleBtn" class="btn small">⏱ 3秒: ON</button>
       <button id="srsToggleBtn" class="btn small">SRS: ON</button>
       <button id="favBtn" class="btn small">☆ お気に入り</button>
       <button id="onlyFavBtn" class="btn small">お気に入りのみ: OFF</button>
-      <button id="timerToggleBtn" class="btn small">⏱ 3秒: ON</button>
       <button id="resetBtn" class="btn small danger">データ初期化</button>
     </section>
 
