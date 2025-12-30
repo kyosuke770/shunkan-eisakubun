@@ -41,7 +41,7 @@
 
   <!-- プリセット -->
   <section class="home-card">
-    <h2>🎯 プリセット</h2>
+    <h2>🎯 学習モード</h2>
     <div id="presetChips" class="chips"></div>
   </section>
 
@@ -61,7 +61,7 @@
     <button class="secondary" onclick="goHome()">← ホーム</button>
   </header>
 
-  <section id="card" aria-label="flashcard">
+  <section id="card">
     <div id="jp" class="jp"></div>
     <div id="en" class="en">タップして答え</div>
   </section>
@@ -75,11 +75,11 @@
 
 </main>
 
-<!-- ===== サンプルデータ（CSV fetch に置換可） ===== -->
+<!-- ===== サンプルデータ（CSV fetch に置き換え可） ===== -->
 <script>
 window.phrases = [
   { no:1, jp:"すぐに終わらせますね。", en:"I'll be quick.", lv:1 },
-  { no:2, jp:"もう少しで終わります。", en:"I'm almost done.", lv:2 },
+  { no:2, jp:"もう少しで{x}。", en:"I'm almost {x}.", slots:["done","there","ready"], lv:2 },
   { no:3, jp:"お待たせしました。", en:"Sorry for the wait.", lv:1 },
   { no:4, jp:"今向かっています。", en:"I'm on my way.", lv:1 }
 ];
