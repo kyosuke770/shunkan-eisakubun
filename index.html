@@ -1,3 +1,4 @@
+<!-- index.html：SRSを4ボタン + NOTE対応。app.jsはキャッシュ破壊のため v=7 -->
 <!doctype html>
 <html lang="ja">
 <head>
@@ -26,8 +27,9 @@
       </div>
       <div id="csvArea" class="csvArea hidden">
         <p class="sub">
-          形式：<code>JP,EN,SLOTS</code>（SLOTSは任意）<br />
-          SLOTS例：<code>busy:忙しい|tired:疲れている|free:暇だ</code>
+          形式：<code>JP,EN,SLOTS,NOTE</code><br />
+          SLOTS例：<code>busy:忙しい|tired:疲れている|free:暇だ</code><br />
+          NOTE：ニュアンス/注意点（任意）
         </p>
         <textarea id="csvInput" rows="7" placeholder="ここにCSVを貼り付け"></textarea>
         <div class="row">
@@ -54,9 +56,10 @@
       <button id="nextBtn" class="btn">次 →</button>
     </section>
 
-    <!-- SRS評価 -->
+    <!-- SRS評価（4段階） -->
     <section class="actions">
       <button id="againBtn" class="btn">Again</button>
+      <button id="hardBtn" class="btn">Hard</button>
       <button id="goodBtn" class="btn primary">Good</button>
       <button id="easyBtn" class="btn">Easy</button>
     </section>
@@ -65,7 +68,7 @@
     <section class="bottom">
       <button id="levelToggleBtn" class="btn small">Lv: 1</button>
       <button id="ttsBtn" class="btn small">🔊 英語</button>
-      <button id="timerToggleBtn" class="btn small">⏱ 3秒: ON</button>
+      <button id="timerToggleBtn" class="btn small">⏱ 3s</button>
       <button id="srsToggleBtn" class="btn small">SRS: ON</button>
       <button id="favBtn" class="btn small">☆ お気に入り</button>
       <button id="onlyFavBtn" class="btn small">お気に入りのみ: OFF</button>
@@ -77,7 +80,6 @@
     </footer>
   </main>
 
-  <!-- キャッシュが強い時は ?v=数字 を変えると確実 -->
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
