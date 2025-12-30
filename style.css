@@ -134,3 +134,5 @@ textarea{
 .row .btn{flex:1}
 .sub{color:var(--sub); font-size:13px; margin:0}
 code{background:rgba(255,255,255,.08); padding:2px 6px; border-radius:8px}
+.actions { flex-wrap: wrap; }
+.actions .btn { min-width: 0; }
