@@ -20,6 +20,44 @@ function shuffleArray(arr){
   }
   return arr;
 }
+let timerId = null;
+let timerCount = 3;
+
+function stopTimer(){
+  if(timerId){
+    clearInterval(timerId);
+    timerId = null;
+  }
+}
+
+function startTimer(){
+  stopTimer();
+  if(!state.timerOn) return;
+
+  timerCount = 3;
+  const timerEl = document.getElementById("timerText");
+  if(timerEl) timerEl.textContent = `⏱ ${timerCount}`;
+
+  timerId = setInterval(() => {
+    timerCount--;
+    if(timerEl) timerEl.textContent = timerCount > 0 ? `⏱ ${timerCount}` : "";
+
+    if(timerCount <= 0){
+      stopTimer();
+      // 自動で答え表示
+      if(!state.revealed){
+        state.revealed = true;
+        render();
+
+        // 英語音声（JP→EN時のみ）
+        const idx = currentIndex();
+        if(idx !== null && state.mode === "JP_EN"){
+          speakEnglish(phrases[idx].en);
+        }
+      }
+    }
+  }, 1000);
+}
 
 // ---- Date helpers (day integer) ----
 function todayDay(){
