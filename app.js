@@ -505,7 +505,20 @@ window.addEventListener("keydown", (e) => {
   if(e.key.toLowerCase() === "g") grade("GOOD");
   if(e.key.toLowerCase() === "e") grade("EASY");
 });
+function speakEnglish(text){
+  if(!("speechSynthesis" in window)) return;
 
+  // 連続再生防止
+  window.speechSynthesis.cancel();
+
+  const uttr = new SpeechSynthesisUtterance(text);
+  uttr.lang = "en-US";     // en-GB に変えてもOK
+  uttr.rate = 1.0;         // 0.8〜1.1で調整可
+  uttr.pitch = 1.0;
+  uttr.volume = 1.0;
+
+  window.speechSynthesis.speak(uttr);
+}
 // Init
 rebuildOrder();
 render();
