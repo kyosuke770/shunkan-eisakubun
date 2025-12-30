@@ -313,28 +313,14 @@ function renderPresetChips() {
  * DOMContentLoaded（超重要）
  *************************************************/
 document.addEventListener("DOMContentLoaded", () => {
-  // デバッグ：ボタンが見えてるか
-  console.log("DOM ready", {
-    startRecommend: !!document.getElementById("startRecommend"),
-    continueLinear: !!document.getElementById("continueLinear"),
-    startReview: !!document.getElementById("startReview"),
-  });
+  alert("DOM ready");
 
-  document.getElementById("startRecommend")?.addEventListener("click", startRecommend);
-  document.getElementById("continueLinear")?.addEventListener("click", startLinear);
-  document.getElementById("startReview")?.addEventListener("click", startReview);
+  const btn = document.getElementById("startRecommend");
+  alert("startRecommend exists: " + !!btn);
 
-  document.getElementById("gradeAgain")?.addEventListener("click", () => grade("AGAIN"));
-  document.getElementById("gradeHard")?.addEventListener("click", () => grade("HARD"));
-  document.getElementById("gradeGood")?.addEventListener("click", () => grade("GOOD"));
-  document.getElementById("gradeEasy")?.addEventListener("click", () => grade("EASY"));
-
-  document.getElementById("goHomeBtn")?.addEventListener("click", goHome);
-
-  document.getElementById("card")?.addEventListener("click", () => {
-    state.revealed = !state.revealed;
-    saveState();
-    render();
+  btn.addEventListener("click", () => {
+    alert("clicked!");
+    startRecommend();
   });
 
   goHome();
